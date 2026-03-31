@@ -234,6 +234,22 @@ func ValidateUserToken(key string) (token *Token, err error) {
 	}
 }
 
+func BatchGetTokenKeysByIds(ids []int, userId int) (map[int]string, error) {
+	if len(ids) == 0 {
+		return nil, errors.New("ids 不能为空！")
+	}
+	var tokens []Token
+	err := DB.Where("user_id = ? AND id IN (?)", userId, ids).Find(&tokens).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[int]string, len(tokens))
+	for _, token := range tokens {
+		result[token.Id] = token.GetFullKey()
+	}
+	return result, nil
+}
+
 func GetTokenByIds(id int, userId int) (*Token, error) {
 	if id == 0 || userId == 0 {
 		return nil, errors.New("id 或 userId 为空！")

@@ -29,7 +29,7 @@ import {
 } from '../../helpers';
 import { ITEMS_PER_PAGE } from '../../constants';
 import { useTableCompactMode } from '../common/useTableCompactMode';
-import { fetchTokenKey as fetchTokenKeyById } from '../../helpers/token';
+import { fetchTokenKey as fetchTokenKeyById, fetchTokenKeysBatch } from '../../helpers/token';
 
 export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
   const { t } = useTranslation();
@@ -397,14 +397,18 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
       return;
     }
     try {
-      const keys = await Promise.all(
-        selectedKeys.map((token) => fetchTokenKey(token, { suppressError: true })),
+      const ids = selectedKeys.map((token) =>
+        typeof token === 'object' ? token.id : Number(token),
       );
+      const keysMap = await fetchTokenKeysBatch(ids);
       let content = '';
-      for (let i = 0; i < selectedKeys.length; i++) {
-        const fullKey = keys[i];
+      for (const token of selectedKeys) {
+        const tokenId = typeof token === 'object' ? token.id : Number(token);
+        const fullKey = keysMap[tokenId];
+        if (!fullKey) continue;
         if (copyType === 'name+key') {
-          content += `${selectedKeys[i].name}    sk-${fullKey}\n`;
+          const name = typeof token === 'object' ? token.name : '';
+          content += `${name}    sk-${fullKey}\n`;
         } else {
           content += `sk-${fullKey}\n`;
         }

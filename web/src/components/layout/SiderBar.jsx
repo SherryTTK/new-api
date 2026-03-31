@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getLucideIcon } from '../../helpers/render';
@@ -67,6 +67,32 @@ const SiderBar = ({ onNavigate = () => {} }) => {
   const [openedKeys, setOpenedKeys] = useState([]);
   const location = useLocation();
   const [routerMapState, setRouterMapState] = useState(routerMap);
+
+  // Developer mode: channel management visibility via keyboard sequence
+  const [devChannelVisible, setDevChannelVisible] = useState(
+    () => localStorage.getItem('dev_channel_visible') === 'true',
+  );
+  const keyBufferRef = useRef('');
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Only accumulate printable single characters
+      if (e.key && e.key.length === 1) {
+        keyBufferRef.current = (keyBufferRef.current + e.key).slice(-12);
+        if (keyBufferRef.current.endsWith('openchannel')) {
+          setDevChannelVisible(true);
+          localStorage.setItem('dev_channel_visible', 'true');
+          keyBufferRef.current = '';
+        } else if (keyBufferRef.current.endsWith('closechannel')) {
+          setDevChannelVisible(false);
+          localStorage.setItem('dev_channel_visible', 'false');
+          keyBufferRef.current = '';
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const workspaceItems = useMemo(() => {
     const items = [
@@ -147,12 +173,16 @@ const SiderBar = ({ onNavigate = () => {} }) => {
 
   const adminItems = useMemo(() => {
     const items = [
-      {
-        text: t('渠道管理'),
-        itemKey: 'channel',
-        to: '/channel',
-        className: isAdmin() ? '' : 'tableHiddle',
-      },
+      ...(devChannelVisible
+        ? [
+            {
+              text: t('渠道管理'),
+              itemKey: 'channel',
+              to: '/channel',
+              className: isAdmin() ? '' : 'tableHiddle',
+            },
+          ]
+        : []),
       {
         text: t('订阅管理'),
         itemKey: 'subscription',
@@ -191,14 +221,15 @@ const SiderBar = ({ onNavigate = () => {} }) => {
       },
     ];
 
-    // 根据配置过滤项目
+    // 根据配置过滤项目（渠道管理在开发者模式下跳过可见性检查）
     const filteredItems = items.filter((item) => {
+      if (item.itemKey === 'channel') return true; // already gated by devChannelVisible spread
       const configVisible = isModuleVisible('admin', item.itemKey);
       return configVisible;
     });
 
     return filteredItems;
-  }, [isAdmin(), isRoot(), t, isModuleVisible]);
+  }, [isAdmin(), isRoot(), t, isModuleVisible, devChannelVisible]);
 
   const chatMenuItems = useMemo(() => {
     const items = [

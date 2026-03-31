@@ -84,7 +84,6 @@ const NotificationSettings = ({
     },
     admin: {
       enabled: true,
-      channel: true,
       models: true,
       deployment: true,
       subscription: true,
@@ -168,7 +167,6 @@ const NotificationSettings = ({
       personal: { enabled: true, topup: true, personal: true },
       admin: {
         enabled: true,
-        channel: true,
         models: true,
         deployment: true,
         subscription: true,
@@ -292,7 +290,6 @@ const NotificationSettings = ({
       title: t('管理员区域'),
       description: t('系统管理功能'),
       modules: [
-        { key: 'channel', title: t('渠道管理'), description: t('API渠道配置') },
         { key: 'models', title: t('模型管理'), description: t('AI模型配置') },
         {
           key: 'deployment',
