@@ -217,3 +217,25 @@ func ExportLogDetail(c *gin.Context) {
 	c.Header("Content-Length", strconv.Itoa(len(data)))
 	c.Data(http.StatusOK, "application/vnd.ms-excel; charset=utf-8", data)
 }
+
+func GetLogByRequestId(c *gin.Context) {
+	requestId := c.Query("request_id")
+	if requestId == "" {
+		common.ApiErrorMsg(c, "request_id 不能为空")
+		return
+	}
+	role := c.GetInt("role")
+	scopedUserID := 0
+	if role < common.RoleAdminUser {
+		scopedUserID = c.GetInt("id")
+	}
+
+	log, err := model.GetSuccessLogByRequestId(requestId, scopedUserID)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	result := service.BuildLogRequestIdResponse(log)
+	common.ApiSuccess(c, result)
+}

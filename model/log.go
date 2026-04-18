@@ -72,6 +72,30 @@ func GetLogByTokenId(tokenId int) (logs []*Log, err error) {
 	return logs, err
 }
 
+func GetSuccessLogByRequestId(requestId string, userId int) (*Log, error) {
+	var log Log
+	tx := LOG_DB.Where("request_id = ? AND type = ?", requestId, LogTypeConsume)
+	if userId > 0 {
+		tx = tx.Where("user_id = ?", userId)
+	}
+	if err := tx.Order("id desc").First(&log).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			var count int64
+			countTx := LOG_DB.Model(&Log{}).Where("request_id = ?", requestId)
+			if userId > 0 {
+				countTx = countTx.Where("user_id = ?", userId)
+			}
+			countTx.Count(&count)
+			if count > 0 {
+				return nil, errors.New("该 Request ID 无成功记录")
+			}
+			return nil, errors.New("该 Request ID 不存在")
+		}
+		return nil, errors.New("查询日志失败")
+	}
+	return &log, nil
+}
+
 func RecordLog(userId int, logType int, content string) {
 	if logType == LogTypeConsume && !common.LogConsumeEnabled {
 		return
