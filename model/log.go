@@ -336,44 +336,8 @@ func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName
 		return nil, 0, err
 	}
 
-	channelIds := types.NewSet[int]()
-	for _, log := range logs {
-		if log.ChannelId != 0 {
-			channelIds.Add(log.ChannelId)
-		}
-	}
-
-	if channelIds.Len() > 0 {
-		var channels []struct {
-			Id   int    `gorm:"column:id"`
-			Name string `gorm:"column:name"`
-		}
-		if common.MemoryCacheEnabled {
-			// Cache get channel
-			for _, channelId := range channelIds.Items() {
-				if cacheChannel, err := CacheGetChannel(channelId); err == nil {
-					channels = append(channels, struct {
-						Id   int    `gorm:"column:id"`
-						Name string `gorm:"column:name"`
-					}{
-						Id:   channelId,
-						Name: cacheChannel.Name,
-					})
-				}
-			}
-		} else {
-			// Bulk query channels from DB
-			if err = DB.Table("channels").Select("id, name").Where("id IN ?", channelIds.Items()).Find(&channels).Error; err != nil {
-				return logs, total, err
-			}
-		}
-		channelMap := make(map[int]string, len(channels))
-		for _, channel := range channels {
-			channelMap[channel.Id] = channel.Name
-		}
-		for i := range logs {
-			logs[i].ChannelName = channelMap[logs[i].ChannelId]
-		}
+	if err = attachChannelNames(logs); err != nil {
+		return logs, total, err
 	}
 
 	return logs, total, err
@@ -432,6 +396,61 @@ type Stat struct {
 	Tpm   int `json:"tpm"`
 }
 
+type LogSummaryExportRow struct {
+	TokenID     int    `json:"token_id"`
+	TokenName   string `json:"token_name"`
+	MaskedKey   string `json:"masked_key"`
+	TotalCalls  int64  `json:"total_calls"`
+	TotalTokens int64  `json:"total_tokens"`
+	TotalQuota  int64  `json:"total_quota"`
+}
+
+func attachChannelNames(logs []*Log) error {
+	channelIds := types.NewSet[int]()
+	for _, log := range logs {
+		if log.ChannelId != 0 {
+			channelIds.Add(log.ChannelId)
+		}
+	}
+
+	if channelIds.Len() == 0 {
+		return nil
+	}
+
+	var channels []struct {
+		Id   int    `gorm:"column:id"`
+		Name string `gorm:"column:name"`
+	}
+	if common.MemoryCacheEnabled {
+		// Cache get channel
+		for _, channelId := range channelIds.Items() {
+			if cacheChannel, err := CacheGetChannel(channelId); err == nil {
+				channels = append(channels, struct {
+					Id   int    `gorm:"column:id"`
+					Name string `gorm:"column:name"`
+				}{
+					Id:   channelId,
+					Name: cacheChannel.Name,
+				})
+			}
+		}
+	} else {
+		// Bulk query channels from DB
+		if err := DB.Table("channels").Select("id, name").Where("id IN ?", channelIds.Items()).Find(&channels).Error; err != nil {
+			return err
+		}
+	}
+
+	channelMap := make(map[int]string, len(channels))
+	for _, channel := range channels {
+		channelMap[channel.Id] = channel.Name
+	}
+	for i := range logs {
+		logs[i].ChannelName = channelMap[logs[i].ChannelId]
+	}
+	return nil
+}
+
 func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string) (stat Stat, err error) {
 	tx := LOG_DB.Table("logs").Select("sum(quota) quota")
 
@@ -486,6 +505,88 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	}
 
 	return stat, nil
+}
+
+func GetLogSummaryExportRows(startTimestamp int64, endTimestamp int64, userId int) ([]LogSummaryExportRow, error) {
+	var tokens []*Token
+	tokenTx := DB.Order("id asc")
+	if userId > 0 {
+		tokenTx = tokenTx.Where("user_id = ?", userId)
+	}
+	if err := tokenTx.Find(&tokens).Error; err != nil {
+		common.SysError("failed to query tokens for log summary export: " + err.Error())
+		return nil, errors.New("查询汇总导出数据失败")
+	}
+
+	type logSummaryStat struct {
+		TokenID     int   `gorm:"column:token_id"`
+		TotalCalls  int64 `gorm:"column:total_calls"`
+		TotalTokens int64 `gorm:"column:total_tokens"`
+		TotalQuota  int64 `gorm:"column:total_quota"`
+	}
+
+	var stats []logSummaryStat
+	statTx := LOG_DB.Table("logs").
+		Select("token_id, count(*) as total_calls, coalesce(sum(prompt_tokens + completion_tokens), 0) as total_tokens, coalesce(sum(quota), 0) as total_quota").
+		Where("type = ?", LogTypeConsume).
+		Where("token_id > 0")
+	if userId > 0 {
+		statTx = statTx.Where("user_id = ?", userId)
+	}
+	if startTimestamp != 0 {
+		statTx = statTx.Where("created_at >= ?", startTimestamp)
+	}
+	if endTimestamp != 0 {
+		statTx = statTx.Where("created_at <= ?", endTimestamp)
+	}
+	if err := statTx.Group("token_id").Scan(&stats).Error; err != nil {
+		common.SysError("failed to query log summary export stats: " + err.Error())
+		return nil, errors.New("查询汇总导出数据失败")
+	}
+
+	statMap := make(map[int]logSummaryStat, len(stats))
+	for _, stat := range stats {
+		statMap[stat.TokenID] = stat
+	}
+
+	rows := make([]LogSummaryExportRow, 0, len(tokens))
+	for _, token := range tokens {
+		stat := statMap[token.Id]
+		rows = append(rows, LogSummaryExportRow{
+			TokenID:     token.Id,
+			TokenName:   token.Name,
+			MaskedKey:   token.GetMaskedKey(),
+			TotalCalls:  stat.TotalCalls,
+			TotalTokens: stat.TotalTokens,
+			TotalQuota:  stat.TotalQuota,
+		})
+	}
+	return rows, nil
+}
+
+func GetLogsForDetailExport(startTimestamp int64, endTimestamp int64, tokenName string, userId int) (logs []*Log, err error) {
+	tx := LOG_DB.Where("logs.type IN ?", []int{LogTypeConsume, LogTypeError})
+	if userId > 0 {
+		tx = tx.Where("logs.user_id = ?", userId)
+	}
+	if tokenName != "" {
+		tx = tx.Where("logs.token_name = ?", tokenName)
+	}
+	if startTimestamp != 0 {
+		tx = tx.Where("logs.created_at >= ?", startTimestamp)
+	}
+	if endTimestamp != 0 {
+		tx = tx.Where("logs.created_at <= ?", endTimestamp)
+	}
+	if err = tx.Order("logs.id desc").Find(&logs).Error; err != nil {
+		common.SysError("failed to query log detail export rows: " + err.Error())
+		return nil, errors.New("查询明细导出数据失败")
+	}
+	if err = attachChannelNames(logs); err != nil {
+		common.SysError("failed to attach channel names for detail export: " + err.Error())
+		return nil, errors.New("查询明细导出数据失败")
+	}
+	return logs, nil
 }
 
 func SumUsedToken(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string) (token int) {

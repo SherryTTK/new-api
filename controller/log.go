@@ -6,6 +6,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -168,4 +169,47 @@ func DeleteHistoryLogs(c *gin.Context) {
 		"data":    count,
 	})
 	return
+}
+
+func ExportLogSummary(c *gin.Context) {
+	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+	role := c.GetInt("role")
+	scopedUserID := 0
+	if role < common.RoleAdminUser {
+		scopedUserID = c.GetInt("id")
+	}
+
+	data, filename, err := service.BuildLogSummaryExport(startTimestamp, endTimestamp, scopedUserID)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.Header("Content-Type", "application/vnd.ms-excel; charset=utf-8")
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	c.Header("Content-Length", strconv.Itoa(len(data)))
+	c.Data(http.StatusOK, "application/vnd.ms-excel; charset=utf-8", data)
+}
+
+func ExportLogDetail(c *gin.Context) {
+	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+	tokenName := c.Query("token_name")
+	role := c.GetInt("role")
+	scopedUserID := 0
+	if role < common.RoleAdminUser {
+		scopedUserID = c.GetInt("id")
+	}
+
+	data, filename, err := service.BuildLogDetailExport(startTimestamp, endTimestamp, tokenName, scopedUserID)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.Header("Content-Type", "application/vnd.ms-excel; charset=utf-8")
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	c.Header("Content-Length", strconv.Itoa(len(data)))
+	c.Data(http.StatusOK, "application/vnd.ms-excel; charset=utf-8", data)
 }
