@@ -1,0 +1,167 @@
+package service
+
+import (
+	"bytes"
+	"fmt"
+	"html"
+	"strconv"
+	"time"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
+)
+
+const exportCNYExchangeRate = 7.2
+
+func quotaToAmount(quota int64) float64 {
+	if common.QuotaPerUnit == 0 {
+		return 0
+	}
+	return float64(quota) / common.QuotaPerUnit
+}
+
+func quotaToCNYAmount(quota int64) float64 {
+	return quotaToAmount(quota) * exportCNYExchangeRate
+}
+
+func formatAmount(quota int64) string {
+	return strconv.FormatFloat(quotaToAmount(quota), 'f', 6, 64)
+}
+
+func formatCNYAmount(quota int64) string {
+	return strconv.FormatFloat(quotaToCNYAmount(quota), 'f', 6, 64)
+}
+
+func formatExportTimestamp(timestamp int64) string {
+	if timestamp <= 0 {
+		return ""
+	}
+	return time.Unix(timestamp, 0).In(time.Local).Format("2006-01-02 15:04:05")
+}
+
+func buildExportFileName(prefix string, startTimestamp int64, endTimestamp int64) string {
+	timePart := time.Now().In(time.Local).Format("20060102_150405")
+	if startTimestamp > 0 && endTimestamp > 0 {
+		start := time.Unix(startTimestamp, 0).In(time.Local).Format("20060102_150405")
+		end := time.Unix(endTimestamp, 0).In(time.Local).Format("20060102_150405")
+		timePart = fmt.Sprintf("%s_%s", start, end)
+	}
+	return fmt.Sprintf("%s-%s.xls", prefix, timePart)
+}
+
+func buildExcelHTML(headers []string, rows [][]string) []byte {
+	var buffer bytes.Buffer
+	buffer.WriteString("<html><head><meta charset=\"utf-8\"></head><body>")
+	buffer.WriteString("<table border=\"1\" cellspacing=\"0\" cellpadding=\"6\">")
+	buffer.WriteString("<tr style=\"font-weight:bold;background:#E8F3FF;\">")
+	for _, header := range headers {
+		buffer.WriteString("<th>")
+		buffer.WriteString(html.EscapeString(header))
+		buffer.WriteString("</th>")
+	}
+	buffer.WriteString("</tr>")
+	for _, row := range rows {
+		buffer.WriteString("<tr>")
+		for _, value := range row {
+			buffer.WriteString("<td>")
+			buffer.WriteString(html.EscapeString(value))
+			buffer.WriteString("</td>")
+		}
+		buffer.WriteString("</tr>")
+	}
+	buffer.WriteString("</table></body></html>")
+	return buffer.Bytes()
+}
+
+func BuildLogSummaryExport(startTimestamp int64, endTimestamp int64, userId int) ([]byte, string, error) {
+	rows, err := model.GetLogSummaryExportRows(startTimestamp, endTimestamp, userId)
+	if err != nil {
+		return nil, "", err
+	}
+
+	headers := []string{
+		"Key ID",
+		"Key名称",
+		"Key",
+		"总调用次数",
+		"总消耗Token数",
+		"总消耗额度",
+		"总花费金额(USD)",
+		"总花费金额(CNY)",
+	}
+	tableRows := make([][]string, 0, len(rows))
+	for _, row := range rows {
+		tableRows = append(tableRows, []string{
+			strconv.Itoa(row.TokenID),
+			row.TokenName,
+			row.MaskedKey,
+			strconv.FormatInt(row.TotalCalls, 10),
+			strconv.FormatInt(row.TotalTokens, 10),
+			strconv.FormatInt(row.TotalQuota, 10),
+			formatAmount(row.TotalQuota),
+			formatCNYAmount(row.TotalQuota),
+		})
+	}
+
+	return buildExcelHTML(headers, tableRows), buildExportFileName("usage-log-summary", startTimestamp, endTimestamp), nil
+}
+
+func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName string, userId int) ([]byte, string, error) {
+	logs, err := model.GetLogsForDetailExport(startTimestamp, endTimestamp, tokenName, userId)
+	if err != nil {
+		return nil, "", err
+	}
+
+	headers := []string{
+		"时间",
+		"状态",
+		"类型",
+		"用户名称",
+		"Key名称",
+		"Key ID",
+		"模型名称",
+		"Prompt Tokens",
+		"Completion Tokens",
+		"总 Tokens",
+		"消耗额度",
+		"花费金额(USD)",
+		"花费金额(CNY)",
+		"分组",
+		"渠道 ID",
+		"渠道名称",
+		"Request ID",
+		"内容",
+	}
+	tableRows := make([][]string, 0, len(logs))
+	for _, log := range logs {
+		totalTokens := log.PromptTokens + log.CompletionTokens
+		status := "成功"
+		logTypeName := "消费"
+		if log.Type == model.LogTypeError {
+			status = "失败"
+			logTypeName = "错误"
+		}
+		tableRows = append(tableRows, []string{
+			formatExportTimestamp(log.CreatedAt),
+			status,
+			logTypeName,
+			log.Username,
+			log.TokenName,
+			strconv.Itoa(log.TokenId),
+			log.ModelName,
+			strconv.Itoa(log.PromptTokens),
+			strconv.Itoa(log.CompletionTokens),
+			strconv.Itoa(totalTokens),
+			strconv.Itoa(log.Quota),
+			formatAmount(int64(log.Quota)),
+			formatCNYAmount(int64(log.Quota)),
+			log.Group,
+			strconv.Itoa(log.ChannelId),
+			log.ChannelName,
+			log.RequestId,
+			log.Content,
+		})
+	}
+
+	return buildExcelHTML(headers, tableRows), buildExportFileName("usage-log-detail", startTimestamp, endTimestamp), nil
+}

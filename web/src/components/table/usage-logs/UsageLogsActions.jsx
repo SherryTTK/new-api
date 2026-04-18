@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Tag, Space, Skeleton } from '@douyinfe/semi-ui';
+import { Button, Tag, Space, Skeleton } from '@douyinfe/semi-ui';
 import { renderQuota } from '../../../helpers';
 import CompactModeToggle from '../../common/ui/CompactModeToggle';
 import { useMinimumLoadingTime } from '../../../hooks/common/useMinimumLoadingTime';
@@ -29,6 +29,10 @@ const LogsActions = ({
   showStat,
   compactMode,
   setCompactMode,
+  exportingSummary,
+  exportingDetail,
+  exportSummaryLogs,
+  exportDetailLogs,
   t,
 }) => {
   const showSkeleton = useMinimumLoadingTime(loadingStat);
@@ -83,11 +87,29 @@ const LogsActions = ({
         </Space>
       </Skeleton>
 
-      <CompactModeToggle
-        compactMode={compactMode}
-        setCompactMode={setCompactMode}
-        t={t}
-      />
+      <Space wrap>
+        <Button
+          type='tertiary'
+          size='small'
+          loading={exportingSummary}
+          onClick={exportSummaryLogs}
+        >
+          {t('汇总导出')}
+        </Button>
+        <Button
+          type='tertiary'
+          size='small'
+          loading={exportingDetail}
+          onClick={exportDetailLogs}
+        >
+          {t('明细导出')}
+        </Button>
+        <CompactModeToggle
+          compactMode={compactMode}
+          setCompactMode={setCompactMode}
+          t={t}
+        />
+      </Space>
     </div>
   );
 };

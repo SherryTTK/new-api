@@ -25,6 +25,7 @@ import {
   getTodayStartTimestamp,
   isAdmin,
   showError,
+  showWarning,
   showSuccess,
   timestamp2string,
   renderQuota,
@@ -73,6 +74,8 @@ export const useLogsData = () => {
   const [logCount, setLogCount] = useState(0);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [logType, setLogType] = useState(0);
+  const [exportingSummary, setExportingSummary] = useState(false);
+  const [exportingDetail, setExportingDetail] = useState(false);
 
   // User and admin
   const isAdminUser = isAdmin();
@@ -258,6 +261,115 @@ export const useLogsData = () => {
       request_id: formValues.request_id || '',
       logType: formValues.logType ? parseInt(formValues.logType) : 0,
     };
+  };
+
+  const getExportParams = () => {
+    const { token_name, start_timestamp, end_timestamp } = getFormValues();
+    return {
+      token_name,
+      start_timestamp: Math.floor(Date.parse(start_timestamp) / 1000),
+      end_timestamp: Math.floor(Date.parse(end_timestamp) / 1000),
+    };
+  };
+
+  const getFilenameFromDisposition = (disposition, fallback) => {
+    if (!disposition) {
+      return fallback;
+    }
+
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match && utf8Match[1]) {
+      try {
+        return decodeURIComponent(utf8Match[1]);
+      } catch (e) {
+        console.error('Failed to decode UTF-8 filename', e);
+      }
+    }
+
+    const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+    return plainMatch?.[1] || fallback;
+  };
+
+  const extractBlobErrorMessage = async (error, fallbackMessage) => {
+    const blob = error?.response?.data;
+    if (blob instanceof Blob) {
+      try {
+        const text = await blob.text();
+        const payload = JSON.parse(text);
+        if (payload?.message) {
+          return payload.message;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse export error response', parseError);
+      }
+    }
+    return fallbackMessage;
+  };
+
+  const triggerBlobDownload = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const exportLogFile = async ({
+    url,
+    fallbackFilename,
+    setExporting,
+    successMessage,
+    errorMessage,
+  }) => {
+    setExporting(true);
+    try {
+      const response = await API.get(url, {
+        responseType: 'blob',
+        disableDuplicate: true,
+        skipErrorHandler: true,
+      });
+      const filename = getFilenameFromDisposition(
+        response.headers?.['content-disposition'],
+        fallbackFilename,
+      );
+      triggerBlobDownload(response.data, filename);
+      showSuccess(successMessage);
+    } catch (error) {
+      const message = await extractBlobErrorMessage(error, errorMessage);
+      showError(message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportSummaryLogs = async () => {
+    const { start_timestamp, end_timestamp } = getExportParams();
+    const url = `/api/log/export/summary?start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}`;
+    await exportLogFile({
+      url: encodeURI(url),
+      fallbackFilename: 'usage-log-summary.xlsx',
+      setExporting: setExportingSummary,
+      successMessage: t('汇总导出成功'),
+      errorMessage: t('导出汇总日志失败'),
+    });
+  };
+
+  const exportDetailLogs = async () => {
+    const { token_name, start_timestamp, end_timestamp } = getExportParams();
+    if (!token_name) {
+      showWarning(t('未填写 key 名称时，将导出该时间区间内全部明细记录'));
+    }
+    const url = `/api/log/export/detail?start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&token_name=${token_name}`;
+    await exportLogFile({
+      url: encodeURI(url),
+      fallbackFilename: 'usage-log-detail.xlsx',
+      setExporting: setExportingDetail,
+      successMessage: t('明细导出成功'),
+      errorMessage: t('导出明细日志失败'),
+    });
   };
 
   // Statistics functions
@@ -840,6 +952,8 @@ export const useLogsData = () => {
     logType,
     stat,
     isAdminUser,
+    exportingSummary,
+    exportingDetail,
 
     // Form state
     formApi,
@@ -884,6 +998,8 @@ export const useLogsData = () => {
     refresh,
     copyText,
     handleEyeClick,
+    exportSummaryLogs,
+    exportDetailLogs,
     setLogsFormat,
     hasExpandableRows,
     setLogType,
