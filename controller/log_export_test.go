@@ -115,13 +115,16 @@ func TestExportLogSummaryIncludesZeroUsageTokens(t *testing.T) {
 	if !strings.Contains(body, "<th>总调用次数</th>") {
 		t.Fatalf("expected summary header in export body, got %q", body)
 	}
-	if !strings.Contains(body, "<th>总花费金额(CNY)</th>") {
-		t.Fatalf("expected summary cny header in export body, got %q", body)
+	if !strings.Contains(body, "<th>令牌总额度</th>") {
+		t.Fatalf("expected token quota header in export body, got %q", body)
 	}
-	if !strings.Contains(body, "<td>alpha-key</td>") || !strings.Contains(body, "<td>1</td><td>150</td><td>2000</td><td>0.004000</td><td>0.028800</td>") {
+	if strings.Contains(body, "<th>总花费金额(CNY)</th>") {
+		t.Fatalf("summary export should not contain CNY column, got %q", body)
+	}
+	if !strings.Contains(body, "<td>alpha-key</td>") || !strings.Contains(body, "<td>无限</td><td>1</td><td>150</td><td>2000</td><td>0.004000</td>") {
 		t.Fatalf("expected alpha token summary row, got %q", body)
 	}
-	if !strings.Contains(body, "<td>beta-key</td>") || !strings.Contains(body, "<td>0</td><td>0</td><td>0</td><td>0.000000</td><td>0.000000</td>") {
+	if !strings.Contains(body, "<td>beta-key</td>") || !strings.Contains(body, "<td>无限</td><td>0</td><td>0</td><td>0</td><td>0.000000</td>") {
 		t.Fatalf("expected zero-usage token row, got %q", body)
 	}
 }
@@ -170,7 +173,7 @@ func TestExportLogSummaryRestrictsRegularUserToOwnTokens(t *testing.T) {
 	}
 }
 
-func TestExportLogDetailIncludesSuccessAndErrorRowsForRegularUser(t *testing.T) {
+func TestExportLogDetailOnlySuccessRecordsForRegularUser(t *testing.T) {
 	db := setupLogExportTestDB(t)
 	tokenA := seedExportToken(t, db, 1, "alpha-key", "abcd1234efgh5678")
 	tokenB := seedExportToken(t, db, 2, "beta-key", "ijkl1234mnop5678")
@@ -232,17 +235,23 @@ func TestExportLogDetailIncludesSuccessAndErrorRowsForRegularUser(t *testing.T) 
 	}
 
 	body := recorder.Body.String()
-	if !strings.Contains(body, "<th>状态</th>") || !strings.Contains(body, "<th>花费金额(CNY)</th>") || !strings.Contains(body, "<th>Request ID</th>") {
-		t.Fatalf("expected detail header in export body, got %q", body)
+	if strings.Contains(body, "<th>状态</th>") {
+		t.Fatalf("detail export should not contain status column, got %q", body)
 	}
-	if !strings.Contains(body, "<td>成功</td>") || !strings.Contains(body, "<td>消费</td>") || !strings.Contains(body, "<td>alpha-key</td>") || !strings.Contains(body, "<td>"+fmt.Sprintf("%d", tokenA.Id)+"</td>") {
+	if strings.Contains(body, "<th>花费金额(CNY)</th>") {
+		t.Fatalf("detail export should not contain CNY column, got %q", body)
+	}
+	if !strings.Contains(body, "<th>Request ID</th>") || !strings.Contains(body, "<th>缓存创建Tokens</th>") || !strings.Contains(body, "<th>缓存读取Tokens</th>") {
+		t.Fatalf("expected new detail headers, got %q", body)
+	}
+	if !strings.Contains(body, "<td>alpha-key</td>") || !strings.Contains(body, "<td>"+fmt.Sprintf("%d", tokenA.Id)+"</td>") {
 		t.Fatalf("expected alpha success detail row, got %q", body)
 	}
-	if !strings.Contains(body, "<td>150</td><td>3000</td><td>0.006000</td><td>0.043200</td>") || !strings.Contains(body, "<td>req-alpha</td>") {
-		t.Fatalf("unexpected detail export values: %q", body)
+	if !strings.Contains(body, "<td>req-alpha</td>") {
+		t.Fatalf("expected request id in detail export, got %q", body)
 	}
-	if !strings.Contains(body, "<td>失败</td>") || !strings.Contains(body, "<td>错误</td>") || !strings.Contains(body, "<td>req-alpha-error</td>") || !strings.Contains(body, "upstream error") {
-		t.Fatalf("expected alpha error detail row, got %q", body)
+	if strings.Contains(body, "req-alpha-error") || strings.Contains(body, "upstream error") {
+		t.Fatalf("detail export should exclude error rows, got %q", body)
 	}
 	if strings.Contains(body, "beta-key") || strings.Contains(body, "claude-3-7-sonnet") {
 		t.Fatalf("detail export should exclude other users' rows, got %q", body)

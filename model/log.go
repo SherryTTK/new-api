@@ -397,12 +397,14 @@ type Stat struct {
 }
 
 type LogSummaryExportRow struct {
-	TokenID     int    `json:"token_id"`
-	TokenName   string `json:"token_name"`
-	MaskedKey   string `json:"masked_key"`
-	TotalCalls  int64  `json:"total_calls"`
-	TotalTokens int64  `json:"total_tokens"`
-	TotalQuota  int64  `json:"total_quota"`
+	TokenID        int    `json:"token_id"`
+	TokenName      string `json:"token_name"`
+	MaskedKey      string `json:"masked_key"`
+	TotalCalls     int64  `json:"total_calls"`
+	TotalTokens    int64  `json:"total_tokens"`
+	TotalQuota     int64  `json:"total_quota"`
+	RemainQuota    int    `json:"remain_quota"`
+	UnlimitedQuota bool   `json:"unlimited_quota"`
 }
 
 func attachChannelNames(logs []*Log) error {
@@ -507,7 +509,18 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	return stat, nil
 }
 
-func GetLogSummaryExportRows(startTimestamp int64, endTimestamp int64, userId int) ([]LogSummaryExportRow, error) {
+func GetLogSummaryExportRows(startTimestamp int64, endTimestamp int64, userId int, username string) ([]LogSummaryExportRow, error) {
+	if username != "" && userId == 0 {
+		var user User
+		if err := DB.Where("username = ?", username).First(&user).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errors.New("用户不存在")
+			}
+			return nil, errors.New("查询用户失败")
+		}
+		userId = user.Id
+	}
+
 	var tokens []*Token
 	tokenTx := DB.Order("id asc")
 	if userId > 0 {
@@ -553,19 +566,32 @@ func GetLogSummaryExportRows(startTimestamp int64, endTimestamp int64, userId in
 	for _, token := range tokens {
 		stat := statMap[token.Id]
 		rows = append(rows, LogSummaryExportRow{
-			TokenID:     token.Id,
-			TokenName:   token.Name,
-			MaskedKey:   token.GetMaskedKey(),
-			TotalCalls:  stat.TotalCalls,
-			TotalTokens: stat.TotalTokens,
-			TotalQuota:  stat.TotalQuota,
+			TokenID:        token.Id,
+			TokenName:      token.Name,
+			MaskedKey:      token.GetMaskedKey(),
+			TotalCalls:     stat.TotalCalls,
+			TotalTokens:    stat.TotalTokens,
+			TotalQuota:     stat.TotalQuota,
+			RemainQuota:    token.RemainQuota,
+			UnlimitedQuota: token.UnlimitedQuota,
 		})
 	}
 	return rows, nil
 }
 
-func GetLogsForDetailExport(startTimestamp int64, endTimestamp int64, tokenName string, userId int) (logs []*Log, err error) {
-	tx := LOG_DB.Where("logs.type IN ?", []int{LogTypeConsume, LogTypeError})
+func GetLogsForDetailExport(startTimestamp int64, endTimestamp int64, tokenName string, userId int, username string) (logs []*Log, err error) {
+	if username != "" && userId == 0 {
+		var user User
+		if err := DB.Where("username = ?", username).First(&user).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errors.New("用户不存在")
+			}
+			return nil, errors.New("查询用户失败")
+		}
+		userId = user.Id
+	}
+
+	tx := LOG_DB.Where("logs.type = ?", LogTypeConsume)
 	if userId > 0 {
 		tx = tx.Where("logs.user_id = ?", userId)
 	}

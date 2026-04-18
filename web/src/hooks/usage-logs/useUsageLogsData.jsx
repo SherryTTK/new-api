@@ -264,8 +264,9 @@ export const useLogsData = () => {
   };
 
   const getExportParams = () => {
-    const { token_name, start_timestamp, end_timestamp } = getFormValues();
+    const { username, token_name, start_timestamp, end_timestamp } = getFormValues();
     return {
+      username,
       token_name,
       start_timestamp: Math.floor(Date.parse(start_timestamp) / 1000),
       end_timestamp: Math.floor(Date.parse(end_timestamp) / 1000),
@@ -346,8 +347,8 @@ export const useLogsData = () => {
   };
 
   const exportSummaryLogs = async () => {
-    const { start_timestamp, end_timestamp } = getExportParams();
-    const url = `/api/log/export/summary?start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}`;
+    const { username, start_timestamp, end_timestamp } = getExportParams();
+    const url = `/api/log/export/summary?start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&username=${username}`;
     await exportLogFile({
       url: encodeURI(url),
       fallbackFilename: 'usage-log-summary.xlsx',
@@ -358,11 +359,11 @@ export const useLogsData = () => {
   };
 
   const exportDetailLogs = async () => {
-    const { token_name, start_timestamp, end_timestamp } = getExportParams();
+    const { username, token_name, start_timestamp, end_timestamp } = getExportParams();
     if (!token_name) {
       showWarning(t('未填写 key 名称时，将导出该时间区间内全部明细记录'));
     }
-    const url = `/api/log/export/detail?start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&token_name=${token_name}`;
+    const url = `/api/log/export/detail?start_timestamp=${start_timestamp}&end_timestamp=${end_timestamp}&token_name=${token_name}&username=${username}`;
     await exportLogFile({
       url: encodeURI(url),
       fallbackFilename: 'usage-log-detail.xlsx',

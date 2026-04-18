@@ -174,13 +174,15 @@ func DeleteHistoryLogs(c *gin.Context) {
 func ExportLogSummary(c *gin.Context) {
 	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
 	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+	username := c.Query("username")
 	role := c.GetInt("role")
 	scopedUserID := 0
 	if role < common.RoleAdminUser {
 		scopedUserID = c.GetInt("id")
+		username = ""
 	}
 
-	data, filename, err := service.BuildLogSummaryExport(startTimestamp, endTimestamp, scopedUserID)
+	data, filename, err := service.BuildLogSummaryExport(startTimestamp, endTimestamp, scopedUserID, username)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -196,13 +198,15 @@ func ExportLogDetail(c *gin.Context) {
 	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
 	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
 	tokenName := c.Query("token_name")
+	username := c.Query("username")
 	role := c.GetInt("role")
 	scopedUserID := 0
 	if role < common.RoleAdminUser {
 		scopedUserID = c.GetInt("id")
+		username = ""
 	}
 
-	data, filename, err := service.BuildLogDetailExport(startTimestamp, endTimestamp, tokenName, scopedUserID)
+	data, filename, err := service.BuildLogDetailExport(startTimestamp, endTimestamp, tokenName, scopedUserID, username)
 	if err != nil {
 		common.ApiError(c, err)
 		return

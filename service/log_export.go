@@ -13,6 +13,27 @@ import (
 
 const exportCNYExchangeRate = 7.2
 
+func parseCacheTokensFromOther(other string) (cacheCreation int, cacheRead int) {
+	if other == "" {
+		return 0, 0
+	}
+	var data map[string]interface{}
+	if err := common.UnmarshalJsonStr(other, &data); err != nil {
+		return 0, 0
+	}
+	if v, ok := data["cache_creation_tokens"]; ok {
+		if n, ok := v.(float64); ok {
+			cacheCreation = int(n)
+		}
+	}
+	if v, ok := data["cache_tokens"]; ok {
+		if n, ok := v.(float64); ok {
+			cacheRead = int(n)
+		}
+	}
+	return
+}
+
 func quotaToAmount(quota int64) float64 {
 	if common.QuotaPerUnit == 0 {
 		return 0
@@ -73,8 +94,8 @@ func buildExcelHTML(headers []string, rows [][]string) []byte {
 	return buffer.Bytes()
 }
 
-func BuildLogSummaryExport(startTimestamp int64, endTimestamp int64, userId int) ([]byte, string, error) {
-	rows, err := model.GetLogSummaryExportRows(startTimestamp, endTimestamp, userId)
+func BuildLogSummaryExport(startTimestamp int64, endTimestamp int64, userId int, username string) ([]byte, string, error) {
+	rows, err := model.GetLogSummaryExportRows(startTimestamp, endTimestamp, userId, username)
 	if err != nil {
 		return nil, "", err
 	}
@@ -83,39 +104,41 @@ func BuildLogSummaryExport(startTimestamp int64, endTimestamp int64, userId int)
 		"Key ID",
 		"Key名称",
 		"Key",
+		"令牌总额度",
 		"总调用次数",
 		"总消耗Token数",
 		"总消耗额度",
 		"总花费金额(USD)",
-		"总花费金额(CNY)",
 	}
 	tableRows := make([][]string, 0, len(rows))
 	for _, row := range rows {
+		tokenQuotaStr := "无限"
+		if !row.UnlimitedQuota {
+			tokenQuotaStr = strconv.Itoa(row.RemainQuota)
+		}
 		tableRows = append(tableRows, []string{
 			strconv.Itoa(row.TokenID),
 			row.TokenName,
 			row.MaskedKey,
+			tokenQuotaStr,
 			strconv.FormatInt(row.TotalCalls, 10),
 			strconv.FormatInt(row.TotalTokens, 10),
 			strconv.FormatInt(row.TotalQuota, 10),
 			formatAmount(row.TotalQuota),
-			formatCNYAmount(row.TotalQuota),
 		})
 	}
 
 	return buildExcelHTML(headers, tableRows), buildExportFileName("usage-log-summary", startTimestamp, endTimestamp), nil
 }
 
-func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName string, userId int) ([]byte, string, error) {
-	logs, err := model.GetLogsForDetailExport(startTimestamp, endTimestamp, tokenName, userId)
+func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName string, userId int, username string) ([]byte, string, error) {
+	logs, err := model.GetLogsForDetailExport(startTimestamp, endTimestamp, tokenName, userId, username)
 	if err != nil {
 		return nil, "", err
 	}
 
 	headers := []string{
 		"时间",
-		"状态",
-		"类型",
 		"用户名称",
 		"Key名称",
 		"Key ID",
@@ -123,9 +146,10 @@ func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName st
 		"Prompt Tokens",
 		"Completion Tokens",
 		"总 Tokens",
+		"缓存创建Tokens",
+		"缓存读取Tokens",
 		"消耗额度",
 		"花费金额(USD)",
-		"花费金额(CNY)",
 		"分组",
 		"渠道 ID",
 		"渠道名称",
@@ -135,16 +159,9 @@ func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName st
 	tableRows := make([][]string, 0, len(logs))
 	for _, log := range logs {
 		totalTokens := log.PromptTokens + log.CompletionTokens
-		status := "成功"
-		logTypeName := "消费"
-		if log.Type == model.LogTypeError {
-			status = "失败"
-			logTypeName = "错误"
-		}
+		cacheCreationTokens, cacheReadTokens := parseCacheTokensFromOther(log.Other)
 		tableRows = append(tableRows, []string{
 			formatExportTimestamp(log.CreatedAt),
-			status,
-			logTypeName,
 			log.Username,
 			log.TokenName,
 			strconv.Itoa(log.TokenId),
@@ -152,9 +169,10 @@ func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName st
 			strconv.Itoa(log.PromptTokens),
 			strconv.Itoa(log.CompletionTokens),
 			strconv.Itoa(totalTokens),
+			strconv.Itoa(cacheCreationTokens),
+			strconv.Itoa(cacheReadTokens),
 			strconv.Itoa(log.Quota),
 			formatAmount(int64(log.Quota)),
-			formatCNYAmount(int64(log.Quota)),
 			log.Group,
 			strconv.Itoa(log.ChannelId),
 			log.ChannelName,
