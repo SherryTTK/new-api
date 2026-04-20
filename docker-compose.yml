@@ -16,7 +16,7 @@ version: '3.4' # For compatibility with older Docker versions
 
 services:
   new-api:
-    image: sherryttk/new-api:dev-lcdyy-v2 #calciumion/new-api:latest
+    image: sherryttk/new-api:lcdyy-202604202313 #calciumion/new-api:latest
     container_name: new-api
     restart: always
     command: --log-dir /app/logs

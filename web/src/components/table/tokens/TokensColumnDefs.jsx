@@ -480,6 +480,7 @@ export const getTokensColumns = ({
   setShowEdit,
   refresh,
   groupRatios = {},
+  tokenBuckets = [],
 }) => {
   return [
     {
@@ -502,6 +503,21 @@ export const getTokensColumns = ({
       dataIndex: 'group',
       key: 'group',
       render: (text, record) => renderGroupColumn(text, record, t, groupRatios),
+    },
+    {
+      title: t('令牌桶'),
+      dataIndex: 'token_bucket_id',
+      key: 'token_bucket_id',
+      render: (val) => {
+        if (!val) return '-';
+        const bucket = tokenBuckets.find((b) => b.id === val);
+        if (!bucket) return '-';
+        return (
+          <Tag size='small' color='blue'>
+            {bucket.name} (x{bucket.ratio})
+          </Tag>
+        );
+      },
     },
     {
       title: t('密钥'),

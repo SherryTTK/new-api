@@ -25,6 +25,7 @@ import ModelPricingCombined from '../../pages/Setting/Ratio/ModelPricingCombined
 import GroupRatioSettings from '../../pages/Setting/Ratio/GroupRatioSettings';
 import ModelRatioNotSetEditor from '../../pages/Setting/Ratio/ModelRationNotSetEditor';
 import UpstreamRatioSync from '../../pages/Setting/Ratio/UpstreamRatioSync';
+import TokenBucketSettings from '../../pages/Setting/Ratio/TokenBucketSettings';
 
 import { API, showError, toBoolean } from '../../helpers';
 
@@ -107,6 +108,9 @@ const RatioSetting = () => {
           </Tabs.TabPane>
           <Tabs.TabPane tab={t('上游倍率同步')} itemKey='upstream_sync'>
             <UpstreamRatioSync options={inputs} refresh={onRefresh} />
+          </Tabs.TabPane>
+          <Tabs.TabPane tab={t('令牌桶')} itemKey='token_bucket'>
+            <TokenBucketSettings />
           </Tabs.TabPane>
         </Tabs>
       </Card>

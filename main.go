@@ -273,6 +273,9 @@ func InitResources() error {
 	// Initialize options, should after model.InitDB()
 	model.InitOptionMap()
 
+	// 初始化令牌桶缓存
+	model.InitTokenBucketCache()
+
 	// 清理旧的磁盘缓存文件
 	common.CleanupOldCacheFiles()
 

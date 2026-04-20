@@ -358,6 +358,11 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 	if adminRejectReason != "" {
 		other["reject_reason"] = adminRejectReason
 	}
+	if len(relayInfo.PriceData.OtherRatios) > 0 {
+		for k, v := range relayInfo.PriceData.OtherRatios {
+			other[k+"_ratio"] = v
+		}
+	}
 	if summary.ImageTokens != 0 {
 		other["image"] = true
 		other["image_ratio"] = summary.ImageRatio

@@ -348,22 +348,6 @@ func TokenAuth() func(c *gin.Context) {
 			return
 		}
 
-		allowIps := token.GetIpLimits()
-		if len(allowIps) > 0 {
-			clientIp := c.ClientIP()
-			logger.LogDebug(c, "Token has IP restrictions, checking client IP %s", clientIp)
-			ip := net.ParseIP(clientIp)
-			if ip == nil {
-				abortWithOpenAiMessage(c, http.StatusForbidden, "无法解析客户端 IP 地址")
-				return
-			}
-			if common.IsIpInCIDRList(ip, allowIps) == false {
-				abortWithOpenAiMessage(c, http.StatusForbidden, "您的 IP 不在令牌允许访问的列表中", types.ErrorCodeAccessDenied)
-				return
-			}
-			logger.LogDebug(c, "Client IP %s passed the token IP restrictions check", clientIp)
-		}
-
 		userCache, err := model.GetUserCache(token.UserId)
 		if err != nil {
 			common.SysLog(fmt.Sprintf("TokenAuth GetUserCache error for user %d: %v", token.UserId, err))
@@ -378,6 +362,27 @@ func TokenAuth() func(c *gin.Context) {
 		}
 
 		userCache.WriteContext(c)
+
+		allowIps := token.GetIpLimits()
+		if len(allowIps) > 0 {
+			clientIp := c.ClientIP()
+			logger.LogDebug(c, "Token has IP restrictions, checking client IP %s", clientIp)
+			ip := net.ParseIP(clientIp)
+			if ip == nil {
+				abortWithOpenAiMessage(c, http.StatusForbidden, "无法解析客户端 IP 地址")
+				return
+			}
+			parsedEntries := common.ParseAndCacheCIDRList(allowIps)
+			if !common.IsIpInParsedCIDRList(ip, parsedEntries) {
+				modelName := getRequestModelName(c)
+				model.RecordErrorLog(c, token.UserId, 0, modelName, token.Name,
+					fmt.Sprintf("IP %s 不在令牌允许访问的列表中", clientIp),
+					token.Id, 0, false, token.Group, nil)
+				abortWithOpenAiMessage(c, http.StatusForbidden, "您的 IP 不在令牌允许访问的列表中", types.ErrorCodeAccessDenied)
+				return
+			}
+			logger.LogDebug(c, "Client IP %s passed the token IP restrictions check", clientIp)
+		}
 
 		userGroup := userCache.Group
 		tokenGroup := token.Group
@@ -426,6 +431,24 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 	}
 	common.SetContextKey(c, constant.ContextKeyTokenGroup, token.Group)
 	common.SetContextKey(c, constant.ContextKeyTokenCrossGroupRetry, token.CrossGroupRetry)
+
+	if token.TokenBucketId > 0 {
+		bucket := model.GetCachedTokenBucket(token.TokenBucketId)
+		if bucket != nil {
+			common.SetContextKey(c, constant.ContextKeyTokenBucketRatio, bucket.Ratio)
+			if !token.ModelLimitsEnabled && bucket.ModelLimits != "" {
+				c.Set("token_model_limit_enabled", true)
+				limitsMap := make(map[string]bool)
+				for _, m := range bucket.GetModelLimitsSlice() {
+					limitsMap[m] = true
+				}
+				c.Set("token_model_limit", limitsMap)
+			}
+		}
+	}
+	if token.RpmLimit > 0 {
+		c.Set("token_rpm_limit", token.RpmLimit)
+	}
 	if len(parts) > 1 {
 		if model.IsAdmin(token.UserId) {
 			c.Set("specific_channel_id", parts[1])

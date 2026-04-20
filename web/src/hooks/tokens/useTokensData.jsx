@@ -43,6 +43,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
   const [tokens, setTokens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [groupRatios, setGroupRatios] = useState({});
+  const [tokenBuckets, setTokenBuckets] = useState([]);
   const [activePage, setActivePage] = useState(1);
   const [tokenCount, setTokenCount] = useState(0);
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
@@ -449,6 +450,13 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
         }
       })
       .catch(() => {});
+    API.get('/api/token_bucket/list')
+      .then((res) => {
+        if (res.data.success && res.data.data) {
+          setTokenBuckets(res.data.data);
+        }
+      })
+      .catch(() => {});
   }, [pageSize]);
 
   return {
@@ -460,6 +468,7 @@ export const useTokensData = (openFluentNotification, openCCSwitchModal) => {
     pageSize,
     searching,
     groupRatios,
+    tokenBuckets,
 
     // Selection state
     selectedKeys,

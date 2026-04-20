@@ -50,6 +50,7 @@ const TokensTable = (tokensData) => {
     setShowEdit,
     refresh,
     groupRatios,
+    tokenBuckets,
     t,
   } = tokensData;
 
@@ -69,6 +70,7 @@ const TokensTable = (tokensData) => {
       setShowEdit,
       refresh,
       groupRatios,
+      tokenBuckets,
     });
   }, [
     t,
@@ -84,6 +86,7 @@ const TokensTable = (tokensData) => {
     setShowEdit,
     refresh,
     groupRatios,
+    tokenBuckets,
   ]);
 
   // Handle compact mode by removing fixed positioning

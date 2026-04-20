@@ -460,8 +460,13 @@ function getUsageLogDetailSummary(record, text, billingDisplayMode, t) {
     };
   }
 
-  return {
-    segments: other?.claude
+  const tbRatio = other?.token_bucket_ratio;
+  const hasTb = tbRatio > 0 && tbRatio !== 1;
+  const tbSegment = hasTb
+    ? { tone: 'primary', text: `${t('令牌桶倍率')} ${tbRatio}` }
+    : null;
+
+  const baseSegments = other?.claude
       ? renderModelPriceSimple(
           other.model_ratio,
           other.model_price,
@@ -501,8 +506,13 @@ function getUsageLogDetailSummary(record, text, billingDisplayMode, t) {
           'openai',
           billingDisplayMode,
           'segments',
-        ),
-  };
+        );
+
+  const segments = tbSegment
+    ? [...baseSegments, tbSegment]
+    : baseSegments;
+
+  return { segments };
 }
 
 export const getLogsColumns = ({

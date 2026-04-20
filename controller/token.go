@@ -221,6 +221,8 @@ func AddToken(c *gin.Context) {
 		AllowIps:           token.AllowIps,
 		Group:              token.Group,
 		CrossGroupRetry:    token.CrossGroupRetry,
+		TokenBucketId:      token.TokenBucketId,
+		RpmLimit:           token.RpmLimit,
 	}
 	err = cleanToken.Insert()
 	if err != nil {
@@ -299,6 +301,8 @@ func UpdateToken(c *gin.Context) {
 		cleanToken.AllowIps = token.AllowIps
 		cleanToken.Group = token.Group
 		cleanToken.CrossGroupRetry = token.CrossGroupRetry
+		cleanToken.TokenBucketId = token.TokenBucketId
+		cleanToken.RpmLimit = token.RpmLimit
 	}
 	err = cleanToken.Update()
 	if err != nil {

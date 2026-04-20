@@ -67,6 +67,8 @@ const EditTokenModal = (props) => {
   const formApiRef = useRef(null);
   const [models, setModels] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [tokenBuckets, setTokenBuckets] = useState([]);
+  const [tokenBucketsRaw, setTokenBucketsRaw] = useState([]);
   const [showQuotaInput, setShowQuotaInput] = useState(false);
   const isEdit = props.editingToken.id !== undefined;
 
@@ -81,6 +83,8 @@ const EditTokenModal = (props) => {
     allow_ips: '',
     group: '',
     cross_group_retry: false,
+    token_bucket_id: 0,
+    rpm_limit: 0,
     tokenCount: 1,
   });
 
@@ -156,6 +160,36 @@ const EditTokenModal = (props) => {
     }
   };
 
+  const loadTokenBuckets = async () => {
+    try {
+      let res = await API.get('/api/token_bucket/list');
+      const { success, data } = res.data;
+      if (success) {
+        setTokenBucketsRaw(data || []);
+        setTokenBuckets(
+          (data || []).map((b) => ({
+            label: `${b.name} (x${b.ratio})`,
+            value: b.id,
+          })),
+        );
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleTokenBucketChange = (bucketId) => {
+    if (!formApiRef.current) return;
+    if (!bucketId || bucketId === 0) return;
+    const bucket = tokenBucketsRaw.find((b) => b.id === bucketId);
+    if (!bucket || !bucket.model_limits) return;
+    const bucketModels = bucket.model_limits.split(',').filter(Boolean);
+    if (bucketModels.length === 0) return;
+    const currentModels = formApiRef.current.getValue('model_limits') || [];
+    const merged = [...new Set([...currentModels, ...bucketModels])];
+    formApiRef.current.setValue('model_limits', merged);
+  };
+
   const loadToken = async () => {
     setLoading(true);
     let res = await API.get(`/api/token/${props.editingToken.id}`);
@@ -189,6 +223,7 @@ const EditTokenModal = (props) => {
     }
     loadModels();
     loadGroups();
+    loadTokenBuckets();
   }, [props.editingToken.id]);
 
   useEffect(() => {
@@ -425,6 +460,21 @@ const EditTokenModal = (props) => {
                       )}
                     />
                   </Col>
+                  {tokenBuckets.length > 0 && (
+                    <Col span={24}>
+                      <Form.Select
+                        field='token_bucket_id'
+                        label={t('令牌桶')}
+                        placeholder={t('选择令牌桶（可选）')}
+                        optionList={[
+                          { label: t('无'), value: 0 },
+                          ...tokenBuckets,
+                        ]}
+                        onChange={handleTokenBucketChange}
+                        style={{ width: '100%' }}
+                      />
+                    </Col>
+                  )}
                   <Col xs={24} sm={24} md={24} lg={10} xl={10}>
                     <Form.DatePicker
                       field='expired_time'
@@ -637,6 +687,19 @@ const EditTokenModal = (props) => {
                         '请勿过度信任此功能，IP可能被伪造，请配合nginx和cdn等网关使用',
                       )}
                       showClear
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Form.InputNumber
+                      field='rpm_limit'
+                      label={t('每分钟最大调用次数')}
+                      placeholder={t('0表示不限制')}
+                      min={0}
+                      step={1}
+                      extraText={t(
+                        '设置该令牌每分钟最大调用次数，0表示不限制',
+                      )}
                       style={{ width: '100%' }}
                     />
                   </Col>

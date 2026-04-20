@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
@@ -148,6 +149,8 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 		QuotaToPreConsume:    preConsumedQuota,
 	}
 
+	applyTokenBucketRatio(c, &priceData)
+
 	if common.DebugEnabled {
 		println(fmt.Sprintf("model_price_helper result: %s", priceData.ToSetting()))
 	}
@@ -213,7 +216,22 @@ func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (types
 		Quota:          quota,
 		GroupRatioInfo: groupRatioInfo,
 	}
+	applyTokenBucketRatio(c, &priceData)
 	return priceData, nil
+}
+
+func applyTokenBucketRatio(c *gin.Context, priceData *types.PriceData) {
+	bucketRatio, exists := common.GetContextKeyType[float64](c, constant.ContextKeyTokenBucketRatio)
+	if !exists || bucketRatio <= 0 || bucketRatio == 1 {
+		return
+	}
+	priceData.AddOtherRatio("token_bucket", bucketRatio)
+	if priceData.QuotaToPreConsume > 0 {
+		priceData.QuotaToPreConsume = int(float64(priceData.QuotaToPreConsume) * bucketRatio)
+	}
+	if priceData.Quota > 0 {
+		priceData.Quota = int(float64(priceData.Quota) * bucketRatio)
+	}
 }
 
 func ContainPriceOrRatio(modelName string) bool {

@@ -321,6 +321,21 @@ func SetApiRouter(router *gin.Engine) {
 			prefillGroupRoute.DELETE("/:id", controller.DeletePrefillGroup)
 		}
 
+		tokenBucketRoute := apiRouter.Group("/token_bucket")
+		tokenBucketRoute.Use(middleware.AdminAuth())
+		{
+			tokenBucketRoute.GET("/", controller.GetTokenBuckets)
+			tokenBucketRoute.POST("/", controller.CreateTokenBucket)
+			tokenBucketRoute.PUT("/", controller.UpdateTokenBucket)
+			tokenBucketRoute.DELETE("/:id", controller.DeleteTokenBucket)
+		}
+
+		tokenBucketUserRoute := apiRouter.Group("/token_bucket")
+		tokenBucketUserRoute.Use(middleware.UserAuth())
+		{
+			tokenBucketUserRoute.GET("/list", controller.GetTokenBuckets)
+		}
+
 		mjRoute := apiRouter.Group("/mj")
 		mjRoute.GET("/self", middleware.UserAuth(), controller.GetUserMidjourney)
 		mjRoute.GET("/", middleware.AdminAuth(), controller.GetAllMidjourney)

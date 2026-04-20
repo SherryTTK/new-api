@@ -271,6 +271,7 @@ func migrateDB() error {
 		&Model{},
 		&Vendor{},
 		&PrefillGroup{},
+		&TokenBucket{},
 		&Setup{},
 		&TwoFA{},
 		&TwoFABackupCode{},

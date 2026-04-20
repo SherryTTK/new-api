@@ -652,6 +652,7 @@ export const useLogsData = () => {
                 other.cache_creation_ratio ||
                 1.0,
               billingDisplayMode,
+              other?.token_bucket_ratio || 0,
             );
           } else {
             content = renderModelPrice(
@@ -679,6 +680,7 @@ export const useLogsData = () => {
               other?.image_generation_call || false,
               other?.image_generation_call_price || 0,
               billingDisplayMode,
+              other?.token_bucket_ratio || 0,
             );
           }
           expandDataLocal.push({

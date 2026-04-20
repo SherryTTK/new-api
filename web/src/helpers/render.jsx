@@ -1657,6 +1657,7 @@ export function renderModelPrice(
   imageGenerationCall = false,
   imageGenerationCallPrice = 0,
   displayMode = 'price',
+  tokenBucketRatio = 0,
 ) {
   const { ratio: effectiveGroupRatio, label: ratioLabel } = getEffectiveRatio(
     groupRatio,
@@ -1665,9 +1666,11 @@ export function renderModelPrice(
   groupRatio = effectiveGroupRatio;
 
   const { symbol, rate } = getCurrencyConfig();
+  const hasTokenBucket = tokenBucketRatio > 0 && tokenBucketRatio !== 1;
 
   if (!shouldUseRatioBillingProcess(modelPrice)) {
     if (modelPrice !== -1) {
+      const tbMultiplier = hasTokenBucket ? tokenBucketRatio : 1;
       return renderBillingArticle([
         buildBillingPriceText('按次：{{symbol}}{{price}}', {
           symbol,
@@ -1675,15 +1678,19 @@ export function renderModelPrice(
           rate,
         }),
         buildBillingPriceText(
-          '按次 {{symbol}}{{price}} * {{ratioType}} {{ratio}} = {{symbol}}{{total}}',
+          hasTokenBucket
+            ? '按次 {{symbol}}{{price}} * {{tbLabel}} {{tbRatio}} * {{ratioType}} {{ratio}} = {{symbol}}{{total}}'
+            : '按次 {{symbol}}{{price}} * {{ratioType}} {{ratio}} = {{symbol}}{{total}}',
           {
             symbol,
             usdAmount: modelPrice,
             rate,
+            tbLabel: i18next.t('令牌桶倍率'),
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amountKey: 'price',
-            total: formatBillingDisplayPrice(modelPrice * groupRatio, rate),
+            total: formatBillingDisplayPrice(modelPrice * tbMultiplier * groupRatio, rate),
           },
         ),
       ]);
@@ -1705,13 +1712,14 @@ export function renderModelPrice(
     if (audioInputTokens > 0) {
       effectiveInputTokens -= audioInputTokens;
     }
+    const tbMultiplier = hasTokenBucket ? tokenBucketRatio : 1;
     const price =
-      (effectiveInputTokens / 1000000) * inputRatioPrice * groupRatio +
-      (audioInputTokens / 1000000) * audioInputPrice * groupRatio +
-      (completionTokens / 1000000) * completionRatioPrice * groupRatio +
-      (webSearchCallCount / 1000) * webSearchPrice * groupRatio +
-      (fileSearchCallCount / 1000) * fileSearchPrice * groupRatio +
-      imageGenerationCallPrice * groupRatio;
+      ((effectiveInputTokens / 1000000) * inputRatioPrice * tbMultiplier * groupRatio +
+      (audioInputTokens / 1000000) * audioInputPrice * tbMultiplier * groupRatio +
+      (completionTokens / 1000000) * completionRatioPrice * tbMultiplier * groupRatio +
+      (webSearchCallCount / 1000) * webSearchPrice * tbMultiplier * groupRatio +
+      (fileSearchCallCount / 1000) * fileSearchPrice * tbMultiplier * groupRatio +
+      imageGenerationCallPrice * tbMultiplier * groupRatio);
 
     let inputDesc = '';
     if (image && imageOutputTokens > 0) {
@@ -1759,12 +1767,17 @@ export function renderModelPrice(
       );
     }
 
+    const tbRatioText = hasTokenBucket
+      ? ` * ${i18next.t('令牌桶倍率')} ${tokenBucketRatio}`
+      : '';
+
     const outputDesc = buildBillingText(
-      '输出 {{completion}} tokens / 1M tokens * {{symbol}}{{compPrice}}) * {{ratioType}} {{ratio}}',
+      '输出 {{completion}} tokens / 1M tokens * {{symbol}}{{compPrice}}){{tbText}} * {{ratioType}} {{ratio}}',
       {
         completion: completionTokens,
         symbol,
         compPrice: formatBillingDisplayPrice(completionRatioPrice, rate),
+        tbText: tbRatioText,
         ratio: groupRatio,
         ratioType: ratioLabel,
       },
@@ -1773,12 +1786,13 @@ export function renderModelPrice(
     const extraServices = [
       webSearch && webSearchCallCount > 0
         ? buildBillingPriceText(
-            ' + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}',
+            ' + Web搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}}{{tbText}} * {{ratioType}} {{ratio}}',
             {
               count: webSearchCallCount,
               symbol,
               usdAmount: webSearchPrice,
               rate,
+              tbText: tbRatioText,
               ratio: groupRatio,
               ratioType: ratioLabel,
             },
@@ -1786,12 +1800,13 @@ export function renderModelPrice(
         : '',
       fileSearch && fileSearchCallCount > 0
         ? buildBillingPriceText(
-            ' + 文件搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}} * {{ratioType}} {{ratio}}',
+            ' + 文件搜索 {{count}}次 / 1K 次 * {{symbol}}{{price}}{{tbText}} * {{ratioType}} {{ratio}}',
             {
               count: fileSearchCallCount,
               symbol,
               usdAmount: fileSearchPrice,
               rate,
+              tbText: tbRatioText,
               ratio: groupRatio,
               ratioType: ratioLabel,
             },
@@ -1799,11 +1814,12 @@ export function renderModelPrice(
         : '',
       imageGenerationCall && imageGenerationCallPrice > 0
         ? buildBillingPriceText(
-            ' + 图片生成调用 {{symbol}}{{price}} / 1次 * {{ratioType}} {{ratio}}',
+            ' + 图片生成调用 {{symbol}}{{price}} / 1次{{tbText}} * {{ratioType}} {{ratio}}',
             {
               symbol,
               usdAmount: imageGenerationCallPrice,
               rate,
+              tbText: tbRatioText,
               ratio: groupRatio,
               ratioType: ratioLabel,
             },
@@ -1888,13 +1904,18 @@ export function renderModelPrice(
   }
 
   if (modelPrice !== -1) {
+    const tbMultiplier = hasTokenBucket ? tokenBucketRatio : 1;
     const displayPrice = (modelPrice * rate).toFixed(6);
-    const displayTotal = (modelPrice * groupRatio * rate).toFixed(6);
+    const displayTotal = (modelPrice * tbMultiplier * groupRatio * rate).toFixed(6);
     return i18next.t(
-      '按次：{{symbol}}{{price}} * {{ratioType}}：{{ratio}} = {{symbol}}{{total}}',
+      hasTokenBucket
+        ? '按次：{{symbol}}{{price}} * {{tbLabel}}：{{tbRatio}} * {{ratioType}}：{{ratio}} = {{symbol}}{{total}}'
+        : '按次：{{symbol}}{{price}} * {{ratioType}}：{{ratio}} = {{symbol}}{{total}}',
       {
         symbol: symbol,
         price: displayPrice,
+        tbLabel: i18next.t('令牌桶倍率'),
+        tbRatio: tokenBucketRatio,
         ratio: groupRatio,
         total: displayTotal,
         ratioType: ratioLabel,
@@ -1916,6 +1937,7 @@ export function renderModelPrice(
     audioInputSeperatePrice && audioInputPrice > 0
       ? formatRatioValue(audioInputPrice / inputRatioPrice)
       : null;
+  const tbMultiplier = hasTokenBucket ? tokenBucketRatio : 1;
 
   const textInputTokens = Math.max(
     inputTokens - cacheTokens - audioInputTokens,
@@ -1926,26 +1948,28 @@ export function renderModelPrice(
   const cacheInputTokens = cacheTokens;
 
   const textInputAmount =
-    (textInputTokens / 1000000) * inputRatioPrice * groupRatio;
+    (textInputTokens / 1000000) * inputRatioPrice * tbMultiplier * groupRatio;
   const cacheInputAmount =
     (cacheInputTokens / 1000000) *
     inputRatioPrice *
     cacheRatioValue *
+    tbMultiplier *
     groupRatio;
   const imageInputAmount =
     (imageInputTokens / 1000000) *
     inputRatioPrice *
     imageRatioValue *
+    tbMultiplier *
     groupRatio;
   const audioInputAmount =
-    (audioInputTokens / 1000000) * audioInputPrice * groupRatio;
+    (audioInputTokens / 1000000) * audioInputPrice * tbMultiplier * groupRatio;
   const completionAmount =
-    (completionTokens / 1000000) * completionRatioPrice * groupRatio;
+    (completionTokens / 1000000) * completionRatioPrice * tbMultiplier * groupRatio;
   const webSearchAmount =
-    (webSearchCallCount / 1000) * webSearchPrice * groupRatio;
+    (webSearchCallCount / 1000) * webSearchPrice * tbMultiplier * groupRatio;
   const fileSearchAmount =
-    (fileSearchCallCount / 1000) * fileSearchPrice * groupRatio;
-  const imageGenerationAmount = imageGenerationCallPrice * groupRatio;
+    (fileSearchCallCount / 1000) * fileSearchPrice * tbMultiplier * groupRatio;
+  const imageGenerationAmount = imageGenerationCallPrice * tbMultiplier * groupRatio;
 
   const totalAmount =
     textInputAmount +
@@ -1980,6 +2004,11 @@ export function renderModelPrice(
             audioRatio: audioRatioValue,
           })
         : null,
+      hasTokenBucket
+        ? buildBillingText('令牌桶倍率 {{tbRatio}}', {
+            tbRatio: tokenBucketRatio,
+          })
+        : null,
       buildBillingText('{{ratioType}} {{ratio}}', {
         ratioType: ratioLabel,
         ratio: groupRatio,
@@ -1989,10 +2018,13 @@ export function renderModelPrice(
       .join('，'),
     textInputTokens > 0
       ? buildBillingText(
-          '普通输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? '普通输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : '普通输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             tokens: textInputTokens,
             modelRatio: modelRatioValue,
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(textInputAmount),
@@ -2001,11 +2033,14 @@ export function renderModelPrice(
       : null,
     cacheInputTokens > 0
       ? buildBillingText(
-          '缓存输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 缓存倍率 {{cacheRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? '缓存输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 缓存倍率 {{cacheRatio}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : '缓存输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 缓存倍率 {{cacheRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             tokens: cacheInputTokens,
             modelRatio: modelRatioValue,
             cacheRatio: cacheRatioValue,
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(cacheInputAmount),
@@ -2014,11 +2049,14 @@ export function renderModelPrice(
       : null,
     imageInputTokens > 0
       ? buildBillingText(
-          '图片输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 图片倍率 {{imageRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? '图片输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 图片倍率 {{imageRatio}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : '图片输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 图片倍率 {{imageRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             tokens: imageInputTokens,
             modelRatio: modelRatioValue,
             imageRatio: imageRatioValue,
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(imageInputAmount),
@@ -2027,11 +2065,14 @@ export function renderModelPrice(
       : null,
     audioInputTokens > 0 && audioRatioValue !== null
       ? buildBillingText(
-          '音频输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 音频倍率 {{audioRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? '音频输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 音频倍率 {{audioRatio}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : '音频输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 音频倍率 {{audioRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             tokens: audioInputTokens,
             modelRatio: modelRatioValue,
             audioRatio: audioRatioValue,
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(audioInputAmount),
@@ -2039,11 +2080,14 @@ export function renderModelPrice(
         )
       : null,
     buildBillingText(
-      '输出：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 补全倍率 {{completionRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
+      hasTokenBucket
+        ? '输出：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 补全倍率 {{completionRatio}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+        : '输出：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 补全倍率 {{completionRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
       {
         tokens: completionTokens,
         modelRatio: modelRatioValue,
         completionRatio: completionRatioValue,
+        tbRatio: tokenBucketRatio,
         ratioType: ratioLabel,
         ratio: groupRatio,
         amount: renderDisplayAmountFromUsd(completionAmount),
@@ -2051,10 +2095,13 @@ export function renderModelPrice(
     ),
     webSearch && webSearchCallCount > 0
       ? buildBillingText(
-          'Web 搜索：{{count}} / 1K * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? 'Web 搜索：{{count}} / 1K * 单价 {{price}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : 'Web 搜索：{{count}} / 1K * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             count: webSearchCallCount,
             price: renderDisplayAmountFromUsd(webSearchPrice),
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(webSearchAmount),
@@ -2063,10 +2110,13 @@ export function renderModelPrice(
       : null,
     fileSearch && fileSearchCallCount > 0
       ? buildBillingText(
-          '文件搜索：{{count}} / 1K * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? '文件搜索：{{count}} / 1K * 单价 {{price}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : '文件搜索：{{count}} / 1K * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             count: fileSearchCallCount,
             price: renderDisplayAmountFromUsd(fileSearchPrice),
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(fileSearchAmount),
@@ -2075,9 +2125,12 @@ export function renderModelPrice(
       : null,
     imageGenerationCall && imageGenerationCallPrice > 0
       ? buildBillingText(
-          '图片生成：1 次 * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? '图片生成：1 次 * 单价 {{price}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : '图片生成：1 次 * 单价 {{price}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             price: renderDisplayAmountFromUsd(imageGenerationCallPrice),
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(imageGenerationAmount),
@@ -2564,6 +2617,7 @@ export function renderClaudeModelPrice(
   cacheCreationTokens1h = 0,
   cacheCreationRatio1h = 1.0,
   displayMode = 'price',
+  tokenBucketRatio = 0,
 ) {
   const { ratio: effectiveGroupRatio, label: ratioLabel } = getEffectiveRatio(
     groupRatio,
@@ -2573,9 +2627,11 @@ export function renderClaudeModelPrice(
 
   // 获取货币配置
   const { symbol, rate } = getCurrencyConfig();
+  const hasTokenBucket = tokenBucketRatio > 0 && tokenBucketRatio !== 1;
 
   if (!shouldUseRatioBillingProcess(modelPrice)) {
     if (modelPrice !== -1) {
+      const tbMultiplier = hasTokenBucket ? tokenBucketRatio : 1;
       return renderBillingArticle([
         buildBillingPriceText('模型价格：{{symbol}}{{price}} / 次', {
           symbol,
@@ -2583,14 +2639,18 @@ export function renderClaudeModelPrice(
           rate,
         }),
         buildBillingPriceText(
-          '模型价格 {{symbol}}{{price}} / 次 * {{ratioType}} {{ratio}} = {{symbol}}{{total}}',
+          hasTokenBucket
+            ? '模型价格 {{symbol}}{{price}} / 次 * {{tbLabel}} {{tbRatio}} * {{ratioType}} {{ratio}} = {{symbol}}{{total}}'
+            : '模型价格 {{symbol}}{{price}} / 次 * {{ratioType}} {{ratio}} = {{symbol}}{{total}}',
           {
             symbol,
             usdAmount: modelPrice,
             rate,
+            tbLabel: i18next.t('令牌桶倍率'),
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
-            total: formatBillingDisplayPrice(modelPrice * groupRatio, rate),
+            total: formatBillingDisplayPrice(modelPrice * tbMultiplier * groupRatio, rate),
           },
         ),
       ]);
@@ -2600,6 +2660,7 @@ export function renderClaudeModelPrice(
       completionRatio = 0;
     }
 
+    const tbMultiplier = hasTokenBucket ? tokenBucketRatio : 1;
     const inputRatioPrice = modelRatio * 2.0;
     const completionRatioPrice = modelRatio * 2.0 * completionRatio;
     const cacheRatioPrice = modelRatio * 2.0 * cacheRatio;
@@ -2618,8 +2679,8 @@ export function renderClaudeModelPrice(
       cacheCreationTokens5m * cacheCreationRatio5m +
       cacheCreationTokens1h * cacheCreationRatio1h;
     const price =
-      (effectiveInputTokens / 1000000) * inputRatioPrice * groupRatio +
-      (completionTokens / 1000000) * completionRatioPrice * groupRatio;
+      (effectiveInputTokens / 1000000) * inputRatioPrice * tbMultiplier * groupRatio +
+      (completionTokens / 1000000) * completionRatioPrice * tbMultiplier * groupRatio;
     const inputUnitPrice = inputRatioPrice * rate;
     const completionUnitPrice = completionRatioPrice * rate;
     const cacheUnitPrice = cacheRatioPrice * rate;
@@ -2758,9 +2819,13 @@ export function renderClaudeModelPrice(
           )
         : null,
       buildBillingText(
-        '{{breakdown}} * {{ratioType}} {{ratio}} = {{symbol}}{{total}}',
+        hasTokenBucket
+          ? '({{breakdown}}) * {{tbLabel}} {{tbRatio}} * {{ratioType}} {{ratio}} = {{symbol}}{{total}}'
+          : '{{breakdown}} * {{ratioType}} {{ratio}} = {{symbol}}{{total}}',
         {
           breakdown: breakdownText,
+          tbLabel: i18next.t('令牌桶倍率'),
+          tbRatio: tokenBucketRatio,
           ratioType: ratioLabel,
           ratio: groupRatio,
           symbol,
@@ -2771,14 +2836,19 @@ export function renderClaudeModelPrice(
   }
 
   if (modelPrice !== -1) {
+    const tbMultiplier = hasTokenBucket ? tokenBucketRatio : 1;
     return i18next.t(
-      '模型价格：{{symbol}}{{price}} * {{ratioType}}：{{ratio}} = {{symbol}}{{total}}',
+      hasTokenBucket
+        ? '模型价格：{{symbol}}{{price}} * {{tbLabel}}：{{tbRatio}} * {{ratioType}}：{{ratio}} = {{symbol}}{{total}}'
+        : '模型价格：{{symbol}}{{price}} * {{ratioType}}：{{ratio}} = {{symbol}}{{total}}',
       {
         symbol: symbol,
         price: (modelPrice * rate).toFixed(6),
+        tbLabel: i18next.t('令牌桶倍率'),
+        tbRatio: tokenBucketRatio,
         ratioType: ratioLabel,
         ratio: groupRatio,
-        total: (modelPrice * groupRatio * rate).toFixed(6),
+        total: (modelPrice * tbMultiplier * groupRatio * rate).toFixed(6),
       },
     );
   }
@@ -2817,17 +2887,21 @@ export function renderClaudeModelPrice(
     cacheCreationTokens5m * cacheCreationRatio5mValue +
     cacheCreationTokens1h * cacheCreationRatio1hValue;
 
+  const tbMultiplier = hasTokenBucket ? tokenBucketRatio : 1;
   const totalAmount =
-    (effectiveInputTokens / 1000000) * inputRatioPrice * groupRatio +
-    (completionTokens / 1000000) * completionRatioPrice * groupRatio;
+    (effectiveInputTokens / 1000000) * inputRatioPrice * tbMultiplier * groupRatio +
+    (completionTokens / 1000000) * completionRatioPrice * tbMultiplier * groupRatio;
 
   return renderBillingArticle([
     buildBillingText(
-      '模型倍率 {{modelRatio}}，输出倍率 {{completionRatio}}，缓存倍率 {{cacheRatio}}，{{ratioType}} {{ratio}}',
+      hasTokenBucket
+        ? '模型倍率 {{modelRatio}}，输出倍率 {{completionRatio}}，缓存倍率 {{cacheRatio}}，令牌桶倍率 {{tbRatio}}，{{ratioType}} {{ratio}}'
+        : '模型倍率 {{modelRatio}}，输出倍率 {{completionRatio}}，缓存倍率 {{cacheRatio}}，{{ratioType}} {{ratio}}',
       {
         modelRatio: modelRatioValue,
         completionRatio: completionRatioValue,
         cacheRatio: cacheRatioValue,
+        tbRatio: tokenBucketRatio,
         ratioType: ratioLabel,
         ratio: groupRatio,
       },
@@ -2844,30 +2918,37 @@ export function renderClaudeModelPrice(
           cacheCreationRatio: cacheCreationRatioValue,
         }),
     buildBillingText(
-      '普通输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
+      hasTokenBucket
+        ? '普通输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+        : '普通输入：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
       {
         tokens: inputTokens,
         modelRatio: modelRatioValue,
+        tbRatio: tokenBucketRatio,
         ratioType: ratioLabel,
         ratio: groupRatio,
         amount: renderDisplayAmountFromUsd(
-          (inputTokens / 1000000) * inputRatioPrice * groupRatio,
+          (inputTokens / 1000000) * inputRatioPrice * tbMultiplier * groupRatio,
         ),
       },
     ),
     shouldShowCache
       ? buildBillingText(
-          '缓存读取：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 缓存倍率 {{cacheRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? '缓存读取：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 缓存倍率 {{cacheRatio}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : '缓存读取：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 缓存倍率 {{cacheRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             tokens: cacheTokens,
             modelRatio: modelRatioValue,
             cacheRatio: cacheRatioValue,
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(
               (cacheTokens / 1000000) *
                 inputRatioPrice *
                 cacheRatioValue *
+                tbMultiplier *
                 groupRatio,
             ),
           },
@@ -2875,17 +2956,21 @@ export function renderClaudeModelPrice(
       : null,
     shouldShowLegacyCacheCreation
       ? buildBillingText(
-          '缓存创建：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 缓存创建倍率 {{cacheCreationRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? '缓存创建：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 缓存创建倍率 {{cacheCreationRatio}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : '缓存创建：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 缓存创建倍率 {{cacheCreationRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             tokens: cacheCreationTokens,
             modelRatio: modelRatioValue,
             cacheCreationRatio: cacheCreationRatioValue,
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(
               (cacheCreationTokens / 1000000) *
                 inputRatioPrice *
                 cacheCreationRatioValue *
+                tbMultiplier *
                 groupRatio,
             ),
           },
@@ -2893,17 +2978,21 @@ export function renderClaudeModelPrice(
       : null,
     shouldShowCacheCreation5m
       ? buildBillingText(
-          '5m缓存创建：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 5m缓存创建倍率 {{cacheCreationRatio5m}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? '5m缓存创建：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 5m缓存创建倍率 {{cacheCreationRatio5m}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : '5m缓存创建：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 5m缓存创建倍率 {{cacheCreationRatio5m}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             tokens: cacheCreationTokens5m,
             modelRatio: modelRatioValue,
             cacheCreationRatio5m: cacheCreationRatio5mValue,
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(
               (cacheCreationTokens5m / 1000000) *
                 inputRatioPrice *
                 cacheCreationRatio5mValue *
+                tbMultiplier *
                 groupRatio,
             ),
           },
@@ -2911,17 +3000,21 @@ export function renderClaudeModelPrice(
       : null,
     shouldShowCacheCreation1h
       ? buildBillingText(
-          '1h缓存创建：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 1h缓存创建倍率 {{cacheCreationRatio1h}} * {{ratioType}} {{ratio}} = {{amount}}',
+          hasTokenBucket
+            ? '1h缓存创建：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 1h缓存创建倍率 {{cacheCreationRatio1h}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+            : '1h缓存创建：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 1h缓存创建倍率 {{cacheCreationRatio1h}} * {{ratioType}} {{ratio}} = {{amount}}',
           {
             tokens: cacheCreationTokens1h,
             modelRatio: modelRatioValue,
             cacheCreationRatio1h: cacheCreationRatio1hValue,
+            tbRatio: tokenBucketRatio,
             ratioType: ratioLabel,
             ratio: groupRatio,
             amount: renderDisplayAmountFromUsd(
               (cacheCreationTokens1h / 1000000) *
                 inputRatioPrice *
                 cacheCreationRatio1hValue *
+                tbMultiplier *
                 groupRatio,
             ),
           },
@@ -2935,17 +3028,21 @@ export function renderClaudeModelPrice(
       },
     ),
     buildBillingText(
-      '输出：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 输出倍率 {{completionRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
+      hasTokenBucket
+        ? '输出：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 输出倍率 {{completionRatio}} * 令牌桶倍率 {{tbRatio}} * {{ratioType}} {{ratio}} = {{amount}}'
+        : '输出：{{tokens}} / 1M * 模型倍率 {{modelRatio}} * 输出倍率 {{completionRatio}} * {{ratioType}} {{ratio}} = {{amount}}',
       {
         tokens: completionTokens,
         modelRatio: modelRatioValue,
         completionRatio: completionRatioValue,
+        tbRatio: tokenBucketRatio,
         ratioType: ratioLabel,
         ratio: groupRatio,
         amount: renderDisplayAmountFromUsd(
           (completionTokens / 1000000) *
             inputRatioPrice *
             completionRatioValue *
+            tbMultiplier *
             groupRatio,
         ),
       },

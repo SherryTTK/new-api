@@ -3680,6 +3680,15 @@
     "默认折叠侧边栏": "Default collapse sidebar",
     "默认测试模型": "Default Test Model",
     "默认用户消息": "Default User Message",
-    "默认补全倍率": "Default completion ratio"
+    "默认补全倍率": "Default completion ratio",
+    "令牌桶倍率": "Token Bucket Ratio",
+    "令牌桶倍率 {{tbRatio}}": "Token Bucket Ratio {{tbRatio}}",
+    "新建令牌桶": "New Token Bucket",
+    "编辑令牌桶": "Edit Token Bucket",
+    "令牌桶": "Token Bucket",
+    "令牌桶配置": "Token Bucket Config",
+    "获取令牌桶列表失败": "Failed to get token bucket list",
+    "请选择模型，留空表示不限制": "Select models, leave empty for no restriction",
+    "无限制": "No Restriction"
   }
 }

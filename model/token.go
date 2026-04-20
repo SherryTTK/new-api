@@ -28,6 +28,8 @@ type Token struct {
 	UsedQuota          int            `json:"used_quota" gorm:"default:0"` // used quota
 	Group              string         `json:"group" gorm:"default:''"`
 	CrossGroupRetry    bool           `json:"cross_group_retry"` // 跨分组重试，仅auto分组有效
+	RpmLimit           int            `json:"rpm_limit" gorm:"default:0"` // 每分钟最大调用次数，0表示不限制
+	TokenBucketId      int            `json:"token_bucket_id" gorm:"default:0"`
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
 }
 
@@ -295,7 +297,7 @@ func (token *Token) Update() (err error) {
 		}
 	}()
 	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
-		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry").Updates(token).Error
+		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "token_bucket_id", "rpm_limit").Updates(token).Error
 	return err
 }
 
