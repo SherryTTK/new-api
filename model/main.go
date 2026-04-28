@@ -370,7 +370,65 @@ func migrateLOGDB() error {
 	if err = LOG_DB.AutoMigrate(&Log{}); err != nil {
 		return err
 	}
+	migrateErrorResolvedField()
 	return nil
+}
+
+func migrateErrorResolvedField() {
+	var needsMigration int64
+	LOG_DB.Model(&Log{}).
+		Where("type = ? AND error_resolved = ? AND request_id != ''", LogTypeError, false).
+		Limit(1).Count(&needsMigration)
+	if needsMigration == 0 {
+		return
+	}
+
+	var hasConsumeFollowing int64
+	LOG_DB.Model(&Log{}).
+		Where("type = ? AND error_resolved = ? AND request_id != '' AND request_id IN (?)",
+			LogTypeError, false,
+			LOG_DB.Model(&Log{}).Select("DISTINCT request_id").
+				Where("type = ? AND request_id != ''", LogTypeConsume),
+		).Count(&hasConsumeFollowing)
+
+	if hasConsumeFollowing > 0 {
+		common.SysLog(fmt.Sprintf("migrating error_resolved: marking %d error logs with subsequent consume logs...", hasConsumeFollowing))
+	}
+
+	const batchSize = 5000
+	for {
+		result := LOG_DB.Model(&Log{}).
+			Where("type = ? AND error_resolved = ? AND request_id != '' AND request_id IN (?)",
+				LogTypeError, false,
+				LOG_DB.Model(&Log{}).Select("DISTINCT request_id").
+					Where("type = ? AND request_id != ''", LogTypeConsume),
+			).Limit(batchSize).Update("error_resolved", true)
+		if result.Error != nil {
+			common.SysError("failed to migrate error_resolved (consume): " + result.Error.Error())
+			break
+		}
+		if result.RowsAffected < batchSize {
+			break
+		}
+	}
+
+	for {
+		result := LOG_DB.Exec(
+			"UPDATE logs SET error_resolved = ? WHERE type = ? AND error_resolved = ? AND request_id != '' "+
+				"AND id NOT IN (SELECT max_id FROM (SELECT MAX(id) AS max_id FROM logs WHERE type = ? AND request_id != '' GROUP BY request_id) AS sub)",
+			true, LogTypeError, false, LogTypeError,
+		)
+		if result.Error != nil {
+			common.SysError("failed to migrate error_resolved (dedup): " + result.Error.Error())
+			break
+		}
+		if result.RowsAffected == 0 {
+			break
+		}
+		common.SysLog(fmt.Sprintf("migrated error_resolved (dedup): %d rows", result.RowsAffected))
+	}
+
+	common.SysLog("error_resolved migration completed")
 }
 
 type sqliteColumnDef struct {

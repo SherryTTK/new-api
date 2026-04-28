@@ -36,6 +36,7 @@ type Log struct {
 	Group            string `json:"group" gorm:"index"`
 	Ip               string `json:"ip" gorm:"index;default:''"`
 	RequestId        string `json:"request_id,omitempty" gorm:"type:varchar(64);index:idx_logs_request_id;default:''"`
+	ErrorResolved    bool   `json:"error_resolved" gorm:"index:idx_error_resolved;default:false"`
 	Other            string `json:"other"`
 }
 
@@ -208,6 +209,9 @@ func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string,
 	if err != nil {
 		logger.LogError(c, "failed to record log: "+err.Error())
 	}
+	if requestId != "" {
+		resolveOlderErrorLogs(requestId, log.Id)
+	}
 }
 
 type RecordConsumeLogParams struct {
@@ -269,6 +273,9 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	if err != nil {
 		logger.LogError(c, "failed to record log: "+err.Error())
 	}
+	if requestId != "" {
+		resolveErrorLogs(requestId)
+	}
 	if common.DataExportEnabled {
 		gopool.Go(func() {
 			LogQuotaData(userId, username, params.ModelName, params.Quota, common.GetTimestamp(), params.PromptTokens+params.CompletionTokens)
@@ -319,12 +326,31 @@ func RecordTaskBillingLog(params RecordTaskBillingLogParams) {
 	}
 }
 
+func applyErrorLogDedup(tx *gorm.DB) *gorm.DB {
+	return tx.Where("logs.error_resolved = ?", false)
+}
+
+func resolveErrorLogs(requestId string) {
+	LOG_DB.Model(&Log{}).
+		Where("request_id = ? AND type = ? AND error_resolved = ?", requestId, LogTypeError, false).
+		Update("error_resolved", true)
+}
+
+func resolveOlderErrorLogs(requestId string, currentId int) {
+	LOG_DB.Model(&Log{}).
+		Where("request_id = ? AND type = ? AND id < ? AND error_resolved = ?", requestId, LogTypeError, currentId, false).
+		Update("error_resolved", true)
+}
+
 func GetAllLogs(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, startIdx int, num int, channel int, group string, requestId string) (logs []*Log, total int64, err error) {
 	var tx *gorm.DB
 	if logType == LogTypeUnknown {
 		tx = LOG_DB
 	} else {
 		tx = LOG_DB.Where("logs.type = ?", logType)
+	}
+	if logType == LogTypeError {
+		tx = applyErrorLogDedup(tx)
 	}
 
 	if modelName != "" {
@@ -375,6 +401,9 @@ func GetUserLogs(userId int, logType int, startTimestamp int64, endTimestamp int
 		tx = LOG_DB.Where("logs.user_id = ?", userId)
 	} else {
 		tx = LOG_DB.Where("logs.user_id = ? and logs.type = ?", userId, logType)
+	}
+	if logType == LogTypeError {
+		tx = applyErrorLogDedup(tx)
 	}
 
 	if modelName != "" {
