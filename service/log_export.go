@@ -214,3 +214,26 @@ func BuildLogRequestIdResponse(log *model.Log) map[string]interface{} {
 		"content":               log.Content,
 	}
 }
+
+func BuildLogQueryResponse(log *model.Log) map[string]interface{} {
+	cacheCreationTokens, cacheReadTokens := parseCacheTokensFromOther(log.Other)
+	return map[string]interface{}{
+		"request_id":            log.RequestId,
+		"created_at":            formatExportTimestamp(log.CreatedAt),
+		"username":              log.Username,
+		"token_name":            log.TokenName,
+		"token_id":              log.TokenId,
+		"model_name":            log.ModelName,
+		"prompt_tokens":         log.PromptTokens,
+		"completion_tokens":     log.CompletionTokens,
+		"cache_creation_tokens": cacheCreationTokens,
+		"cache_read_tokens":     cacheReadTokens,
+		"quota":                 log.Quota,
+		"consume":               quotaToAmount(int64(log.Quota)),
+		"use_time":              log.UseTime,
+		"is_stream":             log.IsStream,
+		"group":                 log.Group,
+		"channel_id":            log.ChannelId,
+		"content":               log.Content,
+	}
+}

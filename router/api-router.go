@@ -306,6 +306,7 @@ func SetApiRouter(router *gin.Engine) {
 		logRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())
 		{
 			logRoute.GET("/token", middleware.TokenAuthReadOnly(), controller.GetLogByKey)
+			logRoute.GET("/token/query", middleware.TokenAuthReadOnly(), controller.QueryLogByToken)
 		}
 		groupRoute := apiRouter.Group("/group")
 		groupRoute.Use(middleware.AdminAuth())

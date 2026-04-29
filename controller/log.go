@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
@@ -92,6 +93,65 @@ func GetLogByKey(c *gin.Context) {
 		"message": "",
 		"data":    logs,
 	})
+}
+
+func QueryLogByToken(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "无效的令牌",
+		})
+		return
+	}
+	startTimeStr := c.Query("start_time")
+	endTimeStr := c.Query("end_time")
+	if startTimeStr == "" || endTimeStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "start_time 和 end_time 为必填参数",
+		})
+		return
+	}
+	startTime, err := parseLocalTime(startTimeStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "start_time 格式错误，请使用 2006-01-02 15:04:05 格式",
+		})
+		return
+	}
+	endTime, err := parseLocalTime(endTimeStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "end_time 格式错误，请使用 2006-01-02 15:04:05 格式",
+		})
+		return
+	}
+	modelName := c.Query("model_name")
+	tokenName := c.Query("token_name")
+	logs, err := model.QueryUserConsumeLog(userId, startTime.Unix(), endTime.Unix(), modelName, tokenName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "查询日志失败",
+		})
+		return
+	}
+	result := make([]map[string]interface{}, 0, len(logs))
+	for _, log := range logs {
+		result = append(result, service.BuildLogQueryResponse(log))
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    result,
+	})
+}
+
+func parseLocalTime(s string) (time.Time, error) {
+	return time.ParseInLocation("2006-01-02 15:04:05", s, time.Local)
 }
 
 func GetLogsStat(c *gin.Context) {

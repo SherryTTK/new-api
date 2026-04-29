@@ -67,6 +67,19 @@ func formatUserLogs(logs []*Log, startIdx int) {
 	}
 }
 
+func QueryUserConsumeLog(userId int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string) (logs []*Log, err error) {
+	tx := LOG_DB.Where("logs.user_id = ? AND logs.type = ? AND logs.created_at >= ? AND logs.created_at <= ?",
+		userId, LogTypeConsume, startTimestamp, endTimestamp)
+	if modelName != "" {
+		tx = tx.Where("logs.model_name = ?", modelName)
+	}
+	if tokenName != "" {
+		tx = tx.Where("logs.token_name = ?", tokenName)
+	}
+	err = tx.Order("logs.id desc").Find(&logs).Error
+	return logs, err
+}
+
 func GetLogByTokenId(tokenId int) (logs []*Log, err error) {
 	err = LOG_DB.Model(&Log{}).Where("token_id = ?", tokenId).Order("id desc").Limit(common.MaxRecentItems).Find(&logs).Error
 	formatUserLogs(logs, 0)
