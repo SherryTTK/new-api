@@ -335,6 +335,15 @@ export const getChannelsColumns = ({
       dataIndex: 'id',
     },
     {
+      key: COLUMN_KEYS.TAG,
+      title: t('标签'),
+      dataIndex: 'tag',
+      render: (text) => {
+        if (!text) return <span style={{ color: 'var(--semi-color-text-2)' }}>-</span>;
+        return <Tag size='small'>{text}</Tag>;
+      },
+    },
+    {
       key: COLUMN_KEYS.NAME,
       title: t('名称'),
       dataIndex: 'name',
