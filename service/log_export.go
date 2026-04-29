@@ -104,7 +104,9 @@ func BuildLogSummaryExport(startTimestamp int64, endTimestamp int64, userId int,
 		"Key ID",
 		"Key名称",
 		"Key",
-		"令牌总额度",
+		"令牌剩余额度",
+		"令牌总额度(USD)",
+		"令牌剩余额度(USD)",
 		"总调用次数",
 		"总消耗Token数",
 		"总消耗额度",
@@ -112,15 +114,22 @@ func BuildLogSummaryExport(startTimestamp int64, endTimestamp int64, userId int,
 	}
 	tableRows := make([][]string, 0, len(rows))
 	for _, row := range rows {
-		tokenQuotaStr := "无限"
+		tokenRemainStr := "无限"
+		tokenTotalUSDStr := "无限"
+		tokenRemainUSDStr := "无限"
 		if !row.UnlimitedQuota {
-			tokenQuotaStr = strconv.Itoa(row.RemainQuota)
+			tokenRemainStr = strconv.Itoa(row.RemainQuota)
+			totalQuota := row.RemainQuota + row.UsedQuota
+			tokenTotalUSDStr = strconv.FormatFloat(float64(totalQuota)/500000, 'f', 6, 64)
+			tokenRemainUSDStr = strconv.FormatFloat(float64(row.RemainQuota)/500000, 'f', 6, 64)
 		}
 		tableRows = append(tableRows, []string{
 			strconv.Itoa(row.TokenID),
 			row.TokenName,
 			row.MaskedKey,
-			tokenQuotaStr,
+			tokenRemainStr,
+			tokenTotalUSDStr,
+			tokenRemainUSDStr,
 			strconv.FormatInt(row.TotalCalls, 10),
 			strconv.FormatInt(row.TotalTokens, 10),
 			strconv.FormatInt(row.TotalQuota, 10),

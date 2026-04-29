@@ -457,6 +457,7 @@ type LogSummaryExportRow struct {
 	TotalTokens    int64  `json:"total_tokens"`
 	TotalQuota     int64  `json:"total_quota"`
 	RemainQuota    int    `json:"remain_quota"`
+	UsedQuota      int    `json:"used_quota"`
 	UnlimitedQuota bool   `json:"unlimited_quota"`
 }
 
@@ -626,6 +627,7 @@ func GetLogSummaryExportRows(startTimestamp int64, endTimestamp int64, userId in
 			TotalTokens:    stat.TotalTokens,
 			TotalQuota:     stat.TotalQuota,
 			RemainQuota:    token.RemainQuota,
+			UsedQuota:      token.UsedQuota,
 			UnlimitedQuota: token.UnlimitedQuota,
 		})
 	}
