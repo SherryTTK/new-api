@@ -261,12 +261,13 @@ func ExportLogDetail(c *gin.Context) {
 	username := c.Query("username")
 	role := c.GetInt("role")
 	scopedUserID := 0
-	if role < common.RoleAdminUser {
+	isAdmin := role >= common.RoleAdminUser
+	if !isAdmin {
 		scopedUserID = c.GetInt("id")
 		username = ""
 	}
 
-	data, filename, err := service.BuildLogDetailExport(startTimestamp, endTimestamp, tokenName, scopedUserID, username)
+	data, filename, err := service.BuildLogDetailExport(startTimestamp, endTimestamp, tokenName, scopedUserID, username, isAdmin)
 	if err != nil {
 		common.ApiError(c, err)
 		return

@@ -140,54 +140,100 @@ func BuildLogSummaryExport(startTimestamp int64, endTimestamp int64, userId int,
 	return buildExcelHTML(headers, tableRows), buildExportFileName("usage-log-summary", startTimestamp, endTimestamp), nil
 }
 
-func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName string, userId int, username string) ([]byte, string, error) {
+func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName string, userId int, username string, isAdmin bool) ([]byte, string, error) {
 	logs, err := model.GetLogsForDetailExport(startTimestamp, endTimestamp, tokenName, userId, username)
 	if err != nil {
 		return nil, "", err
 	}
 
-	headers := []string{
-		"时间",
-		"用户名称",
-		"Key名称",
-		"Key ID",
-		"模型名称",
-		"Prompt Tokens",
-		"Completion Tokens",
-		"总 Tokens",
-		"缓存创建Tokens",
-		"缓存读取Tokens",
-		"消耗额度",
-		"花费金额(USD)",
-		"分组",
-		"渠道 ID",
-		"渠道名称",
-		"Request ID",
-		"内容",
+	// 根据用户角色决定是否包含渠道信息
+	var headers []string
+	if isAdmin {
+		headers = []string{
+			"时间",
+			"用户名称",
+			"Key名称",
+			"Key ID",
+			"模型名称",
+			"Prompt Tokens",
+			"Completion Tokens",
+			"总 Tokens",
+			"缓存创建Tokens",
+			"缓存读取Tokens",
+			"消耗额度",
+			"花费金额(USD)",
+			"分组",
+			"渠道 ID",
+			"渠道名称",
+			"Request ID",
+			"内容",
+		}
+	} else {
+		headers = []string{
+			"时间",
+			"用户名称",
+			"Key名称",
+			"Key ID",
+			"模型名称",
+			"Prompt Tokens",
+			"Completion Tokens",
+			"总 Tokens",
+			"缓存创建Tokens",
+			"缓存读取Tokens",
+			"消耗额度",
+			"花费金额(USD)",
+			"分组",
+			"Request ID",
+			"内容",
+		}
 	}
+
 	tableRows := make([][]string, 0, len(logs))
 	for _, log := range logs {
 		totalTokens := log.PromptTokens + log.CompletionTokens
 		cacheCreationTokens, cacheReadTokens := parseCacheTokensFromOther(log.Other)
-		tableRows = append(tableRows, []string{
-			formatExportTimestamp(log.CreatedAt),
-			log.Username,
-			log.TokenName,
-			strconv.Itoa(log.TokenId),
-			log.ModelName,
-			strconv.Itoa(log.PromptTokens),
-			strconv.Itoa(log.CompletionTokens),
-			strconv.Itoa(totalTokens),
-			strconv.Itoa(cacheCreationTokens),
-			strconv.Itoa(cacheReadTokens),
-			strconv.Itoa(log.Quota),
-			formatAmount(int64(log.Quota)),
-			log.Group,
-			strconv.Itoa(log.ChannelId),
-			log.ChannelName,
-			log.RequestId,
-			log.Content,
-		})
+
+		var row []string
+		if isAdmin {
+			row = []string{
+				formatExportTimestamp(log.CreatedAt),
+				log.Username,
+				log.TokenName,
+				strconv.Itoa(log.TokenId),
+				log.ModelName,
+				strconv.Itoa(log.PromptTokens),
+				strconv.Itoa(log.CompletionTokens),
+				strconv.Itoa(totalTokens),
+				strconv.Itoa(cacheCreationTokens),
+				strconv.Itoa(cacheReadTokens),
+				strconv.Itoa(log.Quota),
+				formatAmount(int64(log.Quota)),
+				log.Group,
+				strconv.Itoa(log.ChannelId),
+				log.ChannelName,
+				log.RequestId,
+				log.Content,
+			}
+		} else {
+			row = []string{
+				formatExportTimestamp(log.CreatedAt),
+				log.Username,
+				log.TokenName,
+				strconv.Itoa(log.TokenId),
+				log.ModelName,
+				strconv.Itoa(log.PromptTokens),
+				strconv.Itoa(log.CompletionTokens),
+				strconv.Itoa(totalTokens),
+				strconv.Itoa(cacheCreationTokens),
+				strconv.Itoa(cacheReadTokens),
+				strconv.Itoa(log.Quota),
+				formatAmount(int64(log.Quota)),
+				log.Group,
+				log.RequestId,
+				log.Content,
+			}
+		}
+		tableRows = append(tableRows, row)
 	}
 
 	return buildExcelHTML(headers, tableRows), buildExportFileName("usage-log-detail", startTimestamp, endTimestamp), nil
