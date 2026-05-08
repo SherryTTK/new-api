@@ -193,6 +193,12 @@ func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName st
 		totalTokens := log.PromptTokens + log.CompletionTokens
 		cacheCreationTokens, cacheReadTokens := parseCacheTokensFromOther(log.Other)
 
+		// 对普通用户隐藏错误详情
+		content := log.Content
+		if !isAdmin && log.Type == model.LogTypeError {
+			content = model.MaskErrorContentForUser(content, log.RequestId)
+		}
+
 		var row []string
 		if isAdmin {
 			row = []string{
@@ -212,7 +218,7 @@ func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName st
 				strconv.Itoa(log.ChannelId),
 				log.ChannelName,
 				log.RequestId,
-				log.Content,
+				content,
 			}
 		} else {
 			row = []string{
@@ -230,7 +236,7 @@ func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName st
 				formatAmount(int64(log.Quota)),
 				log.Group,
 				log.RequestId,
-				log.Content,
+				content,
 			}
 		}
 		tableRows = append(tableRows, row)
@@ -239,9 +245,13 @@ func BuildLogDetailExport(startTimestamp int64, endTimestamp int64, tokenName st
 	return buildExcelHTML(headers, tableRows), buildExportFileName("usage-log-detail", startTimestamp, endTimestamp), nil
 }
 
-func BuildLogRequestIdResponse(log *model.Log) map[string]interface{} {
+func BuildLogRequestIdResponse(log *model.Log, isAdmin bool) map[string]interface{} {
 	cacheCreationTokens, cacheReadTokens := parseCacheTokensFromOther(log.Other)
-	return map[string]interface{}{
+	content := log.Content
+	if !isAdmin && log.Type == model.LogTypeError {
+		content = model.MaskErrorContentForUser(content, log.RequestId)
+	}
+	result := map[string]interface{}{
 		"request_id":            log.RequestId,
 		"created_at":            log.CreatedAt,
 		"username":              log.Username,
@@ -256,14 +266,21 @@ func BuildLogRequestIdResponse(log *model.Log) map[string]interface{} {
 		"use_time":              log.UseTime,
 		"is_stream":             log.IsStream,
 		"group":                 log.Group,
-		"channel_id":            log.ChannelId,
-		"content":               log.Content,
+		"content":               content,
 	}
+	if isAdmin {
+		result["channel_id"] = log.ChannelId
+	}
+	return result
 }
 
-func BuildLogQueryResponse(log *model.Log) map[string]interface{} {
+func BuildLogQueryResponse(log *model.Log, isAdmin bool) map[string]interface{} {
 	cacheCreationTokens, cacheReadTokens := parseCacheTokensFromOther(log.Other)
-	return map[string]interface{}{
+	content := log.Content
+	if !isAdmin && log.Type == model.LogTypeError {
+		content = model.MaskErrorContentForUser(content, log.RequestId)
+	}
+	result := map[string]interface{}{
 		"request_id":            log.RequestId,
 		"created_at":            formatExportTimestamp(log.CreatedAt),
 		"username":              log.Username,
@@ -279,7 +296,10 @@ func BuildLogQueryResponse(log *model.Log) map[string]interface{} {
 		"use_time":              log.UseTime,
 		"is_stream":             log.IsStream,
 		"group":                 log.Group,
-		"channel_id":            log.ChannelId,
-		"content":               log.Content,
+		"content":               content,
 	}
+	if isAdmin {
+		result["channel_id"] = log.ChannelId
+	}
+	return result
 }

@@ -64,7 +64,41 @@ func formatUserLogs(logs []*Log, startIdx int) {
 		}
 		logs[i].Other = common.MapToJsonStr(otherMap)
 		logs[i].Id = startIdx + i + 1
+		// 对普通用户隐藏错误详情，只保留状态码和 Request ID
+		if logs[i].Type == LogTypeError {
+			logs[i].Content = MaskErrorContentForUser(logs[i].Content, logs[i].RequestId)
+		}
 	}
+}
+
+// MaskErrorContentForUser 对普通用户隐藏错误详情，只显示状态码和 Request ID
+// 输入格式: "status_code=400, error details" 或 "error details"（无状态码）
+// 输出格式: "status_code=400, Request ID=xxx" 或 "request error, Request ID=xxx"（状态码为0时）
+func MaskErrorContentForUser(content string, requestId string) string {
+	const prefix = "status_code="
+	idx := len(prefix)
+
+	// 检查是否有 status_code 前缀
+	if len(content) >= idx && content[:idx] == prefix {
+		// 查找逗号位置，提取状态码
+		commaIdx := idx
+		for commaIdx < len(content) && content[commaIdx] != ',' {
+			commaIdx++
+		}
+		statusCode := content[idx:commaIdx]
+
+		// 返回 "status_code=XXX, Request ID=xxx"
+		if requestId != "" {
+			return fmt.Sprintf("status_code=%s, Request ID=%s", statusCode, requestId)
+		}
+		return fmt.Sprintf("status_code=%s", statusCode)
+	}
+
+	// 没有状态码的情况，返回 "request error, Request ID=xxx"
+	if requestId != "" {
+		return fmt.Sprintf("request error, Request ID=%s", requestId)
+	}
+	return "request error"
 }
 
 func QueryUserConsumeLog(userId int, startTimestamp int64, endTimestamp int64, modelName string, tokenName string) (logs []*Log, err error) {

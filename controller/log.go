@@ -140,8 +140,9 @@ func QueryLogByToken(c *gin.Context) {
 		return
 	}
 	result := make([]map[string]interface{}, 0, len(logs))
+	// QueryLogByToken 是普通用户接口，isAdmin = false
 	for _, log := range logs {
-		result = append(result, service.BuildLogQueryResponse(log))
+		result = append(result, service.BuildLogQueryResponse(log, false))
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -287,7 +288,8 @@ func GetLogByRequestId(c *gin.Context) {
 	}
 	role := c.GetInt("role")
 	scopedUserID := 0
-	if role < common.RoleAdminUser {
+	isAdmin := role >= common.RoleAdminUser
+	if !isAdmin {
 		scopedUserID = c.GetInt("id")
 	}
 
@@ -297,6 +299,6 @@ func GetLogByRequestId(c *gin.Context) {
 		return
 	}
 
-	result := service.BuildLogRequestIdResponse(log)
+	result := service.BuildLogRequestIdResponse(log, isAdmin)
 	common.ApiSuccess(c, result)
 }
