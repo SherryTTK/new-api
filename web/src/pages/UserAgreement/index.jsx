@@ -18,20 +18,9 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { useTranslation } from 'react-i18next';
-import DocumentRenderer from '../../components/common/DocumentRenderer';
+import LegalDocumentPage from '../../components/marketing/LegalDocumentPage';
+import { userAgreementDocument } from '../legalDocuments';
 
-const UserAgreement = () => {
-  const { t } = useTranslation();
-
-  return (
-    <DocumentRenderer
-      apiEndpoint='/api/user-agreement'
-      title={t('用户协议')}
-      cacheKey='user_agreement'
-      emptyMessage={t('加载用户协议内容失败...')}
-    />
-  );
-};
+const UserAgreement = () => <LegalDocumentPage {...userAgreementDocument} />;
 
 export default UserAgreement;

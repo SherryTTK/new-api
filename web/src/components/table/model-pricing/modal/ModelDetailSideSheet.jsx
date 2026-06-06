@@ -44,11 +44,13 @@ const ModelDetailSideSheet = ({
   endpointMap,
   autoGroups,
   t,
+  className,
 }) => {
   const isMobile = useIsMobile();
 
   return (
     <SideSheet
+      className={className}
       placement='right'
       title={
         <ModelHeader modelData={modelData} vendorsMap={vendorsMap} t={t} />

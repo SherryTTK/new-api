@@ -49,6 +49,21 @@ const PageLayout = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { i18n } = useTranslation();
   const location = useLocation();
+  const standaloneMarketingRoutes = [
+    '/',
+    '/pricing',
+    '/purchase',
+    '/chat-api',
+    '/faq',
+    '/privacy-policy',
+    '/user-agreement',
+    '/login',
+    '/register',
+  ];
+  const isStandaloneMarketingPage = standaloneMarketingRoutes.includes(
+    location.pathname,
+  );
+  const isStandaloneHome = location.pathname === '/';
 
   const cardProPages = [
     '/console/channel',
@@ -56,13 +71,15 @@ const PageLayout = () => {
     '/console/redemption',
     '/console/user',
     '/console/token',
+    '/console/pricing',
     '/console/midjourney',
     '/console/task',
     '/console/models',
     '/pricing',
   ];
 
-  const shouldHideFooter = cardProPages.includes(location.pathname);
+  const shouldHideFooter =
+    isStandaloneMarketingPage || cardProPages.includes(location.pathname);
 
   const shouldInnerPadding =
     location.pathname.includes('/console') &&
@@ -103,7 +120,6 @@ const PageLayout = () => {
 
   useEffect(() => {
     loadUser();
-    loadStatus().catch(console.error);
     let systemName = getSystemName();
     if (systemName) {
       document.title = systemName;
@@ -116,6 +132,13 @@ const PageLayout = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (isStandaloneHome) {
+      return;
+    }
+    loadStatus().catch(console.error);
+  }, [isStandaloneHome]);
 
   useEffect(() => {
     let preferredLang;
@@ -153,22 +176,24 @@ const PageLayout = () => {
         overflow: isMobile ? 'visible' : 'hidden',
       }}
     >
-      <Header
-        style={{
-          padding: 0,
-          height: 'auto',
-          lineHeight: 'normal',
-          position: 'fixed',
-          width: '100%',
-          top: 0,
-          zIndex: 100,
-        }}
-      >
-        <HeaderBar
-          onMobileMenuToggle={() => setDrawerOpen((prev) => !prev)}
-          drawerOpen={drawerOpen}
-        />
-      </Header>
+      {!isStandaloneMarketingPage && (
+        <Header
+          style={{
+            padding: 0,
+            height: 'auto',
+            lineHeight: 'normal',
+            position: 'fixed',
+            width: '100%',
+            top: 0,
+            zIndex: 100,
+          }}
+        >
+          <HeaderBar
+            onMobileMenuToggle={() => setDrawerOpen((prev) => !prev)}
+            drawerOpen={drawerOpen}
+          />
+        </Header>
+      )}
       <Layout
         style={{
           overflow: isMobile ? 'visible' : 'auto',

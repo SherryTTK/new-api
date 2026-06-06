@@ -40,6 +40,9 @@ import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';
 import Midjourney from './pages/Midjourney';
 import Pricing from './pages/Pricing';
+import Purchase from './pages/Purchase';
+import ChatApi from './pages/ChatApi';
+import Faq from './pages/Faq';
 import Task from './pages/Task';
 import ModelPage from './pages/Model';
 import ModelDeploymentPage from './pages/ModelDeployment';
@@ -50,9 +53,10 @@ import PersonalSetting from './components/settings/PersonalSetting';
 import Setup from './pages/Setup';
 import SetupCheck from './components/layout/SetupCheck';
 
-const Home = lazy(() => import('./pages/Home'));
+const Home = lazy(() => import('./pages/Landing'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const About = lazy(() => import('./pages/About'));
+const ConsolePricing = lazy(() => import('./pages/ConsolePricing'));
 const UserAgreement = lazy(() => import('./pages/UserAgreement'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
 
@@ -286,6 +290,16 @@ function App() {
           }
         />
         <Route
+          path='/console/pricing'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <ConsolePricing />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
           path='/console'
           element={
             <PrivateRoute>
@@ -332,6 +346,30 @@ function App() {
                 <Pricing />
               </Suspense>
             )
+          }
+        />
+        <Route
+          path='/purchase'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <Purchase />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/chat-api'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <ChatApi />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/faq'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <Faq />
+            </Suspense>
           }
         />
         <Route

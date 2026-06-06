@@ -43,7 +43,7 @@ const routerMap = {
   setting: '/console/setting',
   about: '/about',
   detail: '/console',
-  pricing: '/pricing',
+  pricing: '/console/pricing',
   task: '/console/task',
   models: '/console/models',
   deployment: '/console/deployment',
@@ -83,6 +83,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('令牌管理'),
         itemKey: 'token',
         to: '/token',
+      },
+      {
+        text: t('模型价格'),
+        itemKey: 'pricing',
+        to: '/console/pricing',
       },
       {
         text: t('使用日志'),
