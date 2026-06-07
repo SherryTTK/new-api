@@ -271,6 +271,21 @@ func SetApiRouter(router *gin.Engine) {
 			tokenRoute.POST("/batch/keys", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.GetTokenKeysBatch)
 		}
 
+		sandboxRoute := apiRouter.Group("/sandbox")
+		sandboxRoute.Use(middleware.CriticalRateLimit(), middleware.SandboxSecretAuth())
+		{
+			sandboxRoute.POST("/organizations", controller.CreateSandboxOrganization)
+			sandboxRoute.POST("/organizations/:organization_id/tokens", controller.CreateSandboxToken)
+		}
+
+		sandboxSelfRoute := apiRouter.Group("/sandbox")
+		sandboxSelfRoute.Use(middleware.CORS(), middleware.CriticalRateLimit(), middleware.TokenAuthReadOnly())
+		{
+			sandboxSelfRoute.PUT("/token/self", controller.UpdateSandboxTokenSelf)
+			sandboxSelfRoute.DELETE("/token/self", controller.DeleteSandboxTokenSelf)
+			sandboxSelfRoute.GET("/log/self", controller.GetSandboxLogSelf)
+		}
+
 		usageRoute := apiRouter.Group("/usage")
 		usageRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())
 		{

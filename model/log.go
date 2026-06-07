@@ -120,6 +120,47 @@ func GetLogByTokenId(tokenId int) (logs []*Log, err error) {
 	return logs, err
 }
 
+func GetSandboxLogsByTokenID(tokenID int, startTimestamp int64, endTimestamp int64, startIdx int, num int) (logs []*Log, total int64, err error) {
+	tx := LOG_DB.Model(&Log{}).Where("token_id = ? AND type = ?", tokenID, LogTypeConsume)
+	if startTimestamp != 0 {
+		tx = tx.Where("created_at >= ?", startTimestamp)
+	}
+	if endTimestamp != 0 {
+		tx = tx.Where("created_at <= ?", endTimestamp)
+	}
+	if err = tx.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err = tx.Order("id desc").Offset(startIdx).Limit(num).Find(&logs).Error; err != nil {
+		return nil, 0, err
+	}
+	return logs, total, nil
+}
+
+type SandboxLogSummary struct {
+	TotalRequests         int64 `json:"total_requests"`
+	TotalPromptTokens     int64 `json:"total_prompt_tokens"`
+	TotalCompletionTokens int64 `json:"total_completion_tokens"`
+	TotalQuota            int64 `json:"total_quota"`
+}
+
+func GetSandboxLogSummaryByTokenID(tokenID int, startTimestamp int64, endTimestamp int64) (summary SandboxLogSummary, err error) {
+	tx := LOG_DB.Model(&Log{}).Where("token_id = ? AND type = ?", tokenID, LogTypeConsume)
+	if startTimestamp != 0 {
+		tx = tx.Where("created_at >= ?", startTimestamp)
+	}
+	if endTimestamp != 0 {
+		tx = tx.Where("created_at <= ?", endTimestamp)
+	}
+	err = tx.Select(
+		"count(*) as total_requests, " +
+			"coalesce(sum(prompt_tokens), 0) as total_prompt_tokens, " +
+			"coalesce(sum(completion_tokens), 0) as total_completion_tokens, " +
+			"coalesce(sum(quota), 0) as total_quota",
+	).Scan(&summary).Error
+	return summary, err
+}
+
 func GetSuccessLogByRequestId(requestId string, userId int) (*Log, error) {
 	var log Log
 	tx := LOG_DB.Where("request_id = ? AND type = ?", requestId, LogTypeConsume)
