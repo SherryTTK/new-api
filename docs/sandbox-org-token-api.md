@@ -1,6 +1,6 @@
-## 沙盒组织与 API Key 接口设计
+## 沙盒组织与 API Key 接口文档
 
-本文档定义 5 个沙盒相关接口，仅作为接口设计稿，当前不涉及代码实现。
+本文档定义 5 个沙盒相关接口，并附带联调测试 `curl` 示例。
 
 ### 设计范围
 
@@ -10,6 +10,11 @@
 - 同一个 `organization_id` 可多次创建新 Key
 - 创建新 Key 时不影响旧 Key，旧 Key 保持原状
 
+### 联调环境
+
+- Base URL：`https://hk.apitoken.ai`
+- 固定请求头：`X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf`
+
 ### 鉴权约定
 
 #### 1. 内部接口：专用 Secret
@@ -17,7 +22,7 @@
 用于接口 `1` 和 `3`。
 
 ```http
-X-Sandbox-Secret: your-shared-secret
+X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf
 ```
 
 说明：
@@ -46,13 +51,13 @@ Authorization: Bearer sk-xxxxxxxx
 
 用于记录沙盒组织主数据。
 
-| 字段 | 类型 | 必填 | 约束 | 说明 |
-| --- | --- | --- | --- | --- |
-| id | int | 是 | 主键 | 自增 ID |
-| organization_id | varchar(64) | 是 | 唯一索引 | 业务组织 ID |
-| created_time | bigint | 是 | 索引 | 创建时间，Unix 秒 |
-| updated_time | bigint | 是 |  | 更新时间，Unix 秒 |
-| deleted_at | datetime/null | 否 | 索引 | 软删除 |
+| 字段              | 类型            | 必填  | 约束   | 说明          |
+| --------------- | ------------- | --- | ---- | ----------- |
+| id              | int           | 是   | 主键   | 自增 ID       |
+| organization_id | varchar(64)   | 是   | 唯一索引 | 业务组织 ID     |
+| created_time    | bigint        | 是   | 索引   | 创建时间，Unix 秒 |
+| updated_time    | bigint        | 是   |      | 更新时间，Unix 秒 |
+| deleted_at      | datetime/null | 否   | 索引   | 软删除         |
 
 说明：
 
@@ -63,13 +68,13 @@ Authorization: Bearer sk-xxxxxxxx
 
 用于记录组织与 Key 的历史关联。
 
-| 字段 | 类型 | 必填 | 约束 | 说明 |
-| --- | --- | --- | --- | --- |
-| id | int | 是 | 主键 | 自增 ID |
-| sandbox_organization_id | int | 是 | 索引 | 关联 `sandbox_organizations.id` |
-| token_id | int | 是 | 唯一索引 | 关联系统 `tokens.id` |
-| created_time | bigint | 是 | 索引 | 关联创建时间，Unix 秒 |
-| deleted_at | datetime/null | 否 | 索引 | 软删除 |
+| 字段                      | 类型            | 必填  | 约束   | 说明                            |
+| ----------------------- | ------------- | --- | ---- | ----------------------------- |
+| id                      | int           | 是   | 主键   | 自增 ID                         |
+| sandbox_organization_id | int           | 是   | 索引   | 关联 `sandbox_organizations.id` |
+| token_id                | int           | 是   | 唯一索引 | 关联系统 `tokens.id`              |
+| created_time            | bigint        | 是   | 索引   | 关联创建时间，Unix 秒                 |
+| deleted_at              | datetime/null | 否   | 索引   | 软删除                           |
 
 说明：
 
@@ -81,30 +86,30 @@ Authorization: Bearer sk-xxxxxxxx
 
 接口 `3` 创建 Key 时，以下字段由后端固定写死，不从请求传入：
 
-| 字段 | 说明 |
-| --- | --- |
-| `user_id` | 固定为用户 `sandbox` 的 ID |
-| `group` | 固定为 `sandbox` |
-| `unlimited_quota` | 固定为 `false` |
-| `model_limits_enabled` | 固定值 |
-| `model_limits` | 固定值 |
-| `allow_ips` | 固定值 |
-| `cross_group_retry` | 固定值 |
-| `token.name` | 固定为 `组织id + 当前时间(精确到秒)` |
+| 字段                     | 说明                      |
+| ---------------------- | ----------------------- |
+| `user_id`              | 固定为用户 `sandbox` 的 ID    |
+| `group`                | 固定为 `sandbox`           |
+| `unlimited_quota`      | 固定为 `false`             |
+| `model_limits_enabled` | 固定值                     |
+| `model_limits`         | 固定值                     |
+| `allow_ips`            | 固定值                     |
+| `cross_group_retry`    | 固定值                     |
+| `token.name`           | 固定为 `组织id + 当前时间(精确到秒)` |
 
 接口 `3` 允许调用方显式传入以下初始配置：
 
-| 字段 | 说明 |
-| --- | --- |
-| `remain_amount_usd` | 新 Key 的初始额度，单位 USD |
-| `expired_time` | 新 Key 的初始有效期，Unix 秒；`-1` 表示永不过期 |
+| 字段                  | 说明                              |
+| ------------------- | ------------------------------- |
+| `remain_amount_usd` | 新 Key 的初始额度，单位 USD              |
+| `expired_time`      | 新 Key 的初始有效期，Unix 秒；`-1` 表示永不过期 |
 
 接口 `3` 的默认值：
 
-| 字段 | 默认值 | 说明 |
-| --- | --- | --- |
+| 字段                  | 默认值   | 说明            |
+| ------------------- | ----- | ------------- |
 | `remain_amount_usd` | `5.0` | 请求未传时，默认 5 美元 |
-| `expired_time` | `-1` | 请求未传时，默认永久有效 |
+| `expired_time`      | `-1`  | 请求未传时，默认永久有效  |
 
 金额单位约定：
 
@@ -159,7 +164,7 @@ POST /api/sandbox/organizations
 ### 鉴权方式
 
 ```http
-X-Sandbox-Secret: your-shared-secret
+X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf
 ```
 
 ### 请求体
@@ -172,9 +177,9 @@ X-Sandbox-Secret: your-shared-secret
 
 ### 请求参数
 
-| 字段 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| organization_id | string | 是 | 组织 ID |
+| 字段              | 类型     | 必填  | 说明    |
+| --------------- | ------ | --- | ----- |
+| organization_id | string | 是   | 组织 ID |
 
 ### 处理规则
 
@@ -222,9 +227,9 @@ X-Sandbox-Secret: your-shared-secret
 ### 请求示例
 
 ```bash
-curl -X POST "https://your-domain/api/sandbox/organizations" \
+curl -X POST "https://hk.apitoken.ai/api/sandbox/organizations" \
   -H "Content-Type: application/json" \
-  -H "X-Sandbox-Secret: your-shared-secret" \
+  -H "X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf" \
   -d '{
     "organization_id": "org-123456"
   }'
@@ -259,10 +264,10 @@ Authorization: Bearer sk-xxxxxxxx
 
 ### 请求参数
 
-| 字段 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| remain_amount_usd | number | 是 | 新额度，单位 USD，直接覆盖当前 Key 的剩余额度 |
-| expired_time | int64 | 是 | 新过期时间，Unix 秒；`-1` 表示永不过期 |
+| 字段                | 类型     | 必填  | 说明                          |
+| ----------------- | ------ | --- | --------------------------- |
+| remain_amount_usd | number | 是   | 新额度，单位 USD，直接覆盖当前 Key 的剩余额度 |
+| expired_time      | int64  | 是   | 新过期时间，Unix 秒；`-1` 表示永不过期    |
 
 ### 处理规则
 
@@ -304,7 +309,7 @@ Authorization: Bearer sk-xxxxxxxx
 ### 请求示例
 
 ```bash
-curl -X PUT "https://your-domain/api/sandbox/token/self" \
+curl -X PUT "https://hk.apitoken.ai/api/sandbox/token/self" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sk-xxxxxxxx" \
   -d '{
@@ -328,7 +333,7 @@ POST /api/sandbox/organizations/:organization_id/tokens
 ### 鉴权方式
 
 ```http
-X-Sandbox-Secret: your-shared-secret
+X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf
 ```
 
 ### 请求体
@@ -342,16 +347,16 @@ X-Sandbox-Secret: your-shared-secret
 
 ### 路径参数
 
-| 参数 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| organization_id | string | 是 | 目标组织 ID |
+| 参数              | 类型     | 必填  | 说明      |
+| --------------- | ------ | --- | ------- |
+| organization_id | string | 是   | 目标组织 ID |
 
 ### 请求参数
 
-| 字段 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| remain_amount_usd | number | 否 | 新 Key 的初始额度，单位 USD；未传时默认 `5.0` |
-| expired_time | int64 | 否 | 新 Key 的初始有效期，Unix 秒；未传时默认 `-1` |
+| 字段                | 类型     | 必填  | 说明                             |
+| ----------------- | ------ | --- | ------------------------------ |
+| remain_amount_usd | number | 否   | 新 Key 的初始额度，单位 USD；未传时默认 `5.0` |
+| expired_time      | int64  | 否   | 新 Key 的初始有效期，Unix 秒；未传时默认 `-1` |
 
 说明：
 
@@ -423,9 +428,9 @@ org-123456-20260608153045
 ### 请求示例
 
 ```bash
-curl -X POST "https://your-domain/api/sandbox/organizations/org-123456/tokens" \
+curl -X POST "https://hk.apitoken.ai/api/sandbox/organizations/org-123456/tokens" \
   -H "Content-Type: application/json" \
-  -H "X-Sandbox-Secret: your-shared-secret" \
+  -H "X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf" \
   -d '{
     "remain_amount_usd": 8.5,
     "expired_time": 1783267200
@@ -480,7 +485,7 @@ Authorization: Bearer sk-xxxxxxxx
 ### 请求示例
 
 ```bash
-curl -X DELETE "https://your-domain/api/sandbox/token/self" \
+curl -X DELETE "https://hk.apitoken.ai/api/sandbox/token/self" \
   -H "Authorization: Bearer sk-xxxxxxxx"
 ```
 
@@ -504,14 +509,14 @@ Authorization: Bearer sk-xxxxxxxx
 
 ### Query 参数
 
-| 参数 | 类型 | 必填 | 说明 |
-| --- | --- | --- | --- |
-| log_start_timestamp | int64 | 否 | 日志明细开始时间，Unix 秒 |
-| log_end_timestamp | int64 | 否 | 日志明细结束时间，Unix 秒 |
-| summary_start_timestamp | int64 | 否 | 总用量统计开始时间，Unix 秒 |
-| summary_end_timestamp | int64 | 否 | 总用量统计结束时间，Unix 秒 |
-| p | int | 否 | 页码，默认 `1` |
-| size | int | 否 | 每页条数，默认 `10`，最大 `100` |
+| 参数                      | 类型    | 必填  | 说明                    |
+| ----------------------- | ----- | --- | --------------------- |
+| log_start_timestamp     | int64 | 否   | 日志明细开始时间，Unix 秒       |
+| log_end_timestamp       | int64 | 否   | 日志明细结束时间，Unix 秒       |
+| summary_start_timestamp | int64 | 否   | 总用量统计开始时间，Unix 秒      |
+| summary_end_timestamp   | int64 | 否   | 总用量统计结束时间，Unix 秒      |
+| p                       | int   | 否   | 页码，默认 `1`             |
+| size                    | int   | 否   | 每页条数，默认 `10`，最大 `100` |
 
 ### 处理规则
 
@@ -573,34 +578,34 @@ Authorization: Bearer sk-xxxxxxxx
 
 ### 字段说明
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| request_id | string | 请求 ID |
-| created_at | string | 日志时间，格式 `YYYY-MM-DD HH:mm:ss` |
-| username | string | 用户名，固定为 `sandbox` |
-| token_name | string | Key 名称 |
-| token_id | int | Key 对应的 token ID |
-| model_name | string | 模型名称 |
-| prompt_tokens | int | 输入 token 数 |
-| completion_tokens | int | 输出 token 数 |
-| cache_creation_tokens | int | 缓存创建 token 数 |
-| cache_read_tokens | int | 缓存读取 token 数 |
-| amount_usd | float | 本条日志消耗金额，单位 USD |
-| use_time | int | 耗时，秒 |
-| is_stream | bool | 是否流式 |
-| group | string | 分组 |
-| content | string | 日志内容 |
+| 字段                    | 类型     | 说明                            |
+| --------------------- | ------ | ----------------------------- |
+| request_id            | string | 请求 ID                         |
+| created_at            | string | 日志时间，格式 `YYYY-MM-DD HH:mm:ss` |
+| username              | string | 用户名，固定为 `sandbox`             |
+| token_name            | string | Key 名称                        |
+| token_id              | int    | Key 对应的 token ID              |
+| model_name            | string | 模型名称                          |
+| prompt_tokens         | int    | 输入 token 数                    |
+| completion_tokens     | int    | 输出 token 数                    |
+| cache_creation_tokens | int    | 缓存创建 token 数                  |
+| cache_read_tokens     | int    | 缓存读取 token 数                  |
+| amount_usd            | float  | 本条日志消耗金额，单位 USD               |
+| use_time              | int    | 耗时，秒                          |
+| is_stream             | bool   | 是否流式                          |
+| group                 | string | 分组                            |
+| content               | string | 日志内容                          |
 
 `usage_summary` 字段说明：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| start_timestamp | int64 | 统计开始时间，Unix 秒 |
-| end_timestamp | int64 | 统计结束时间，Unix 秒 |
-| total_requests | int | 总请求数 |
-| total_prompt_tokens | int | 总输入 token 数 |
-| total_completion_tokens | int | 总输出 token 数 |
-| total_amount_usd | float | 总消耗金额，单位 USD |
+| 字段                      | 类型    | 说明            |
+| ----------------------- | ----- | ------------- |
+| start_timestamp         | int64 | 统计开始时间，Unix 秒 |
+| end_timestamp           | int64 | 统计结束时间，Unix 秒 |
+| total_requests          | int   | 总请求数          |
+| total_prompt_tokens     | int   | 总输入 token 数   |
+| total_completion_tokens | int   | 总输出 token 数   |
+| total_amount_usd        | float | 总消耗金额，单位 USD  |
 
 ### 错误场景
 
@@ -613,23 +618,106 @@ Authorization: Bearer sk-xxxxxxxx
 ### 请求示例
 
 ```bash
-curl "https://your-domain/api/sandbox/log/self?log_start_timestamp=1780675200&log_end_timestamp=1780761600&summary_start_timestamp=1780588800&summary_end_timestamp=1781193600&p=1&size=10" \
+curl "https://hk.apitoken.ai/api/sandbox/log/self?log_start_timestamp=1780675200&log_end_timestamp=1780761600&summary_start_timestamp=1780588800&summary_end_timestamp=1781193600&p=1&size=10" \
   -H "Authorization: Bearer sk-xxxxxxxx"
 ```
 
 ---
 
-## 建议实现说明
+## 测试 Curl 汇总
 
-### 路由建议
+建议先准备环境变量：
 
-| 接口 | 方法 | 路径 | 鉴权 |
-| --- | --- | --- | --- |
-| 沙盒组织创建 | `POST` | `/api/sandbox/organizations` | `X-Sandbox-Secret` |
-| Key 配置修改 | `PUT` | `/api/sandbox/token/self` | `Authorization: Bearer sk-...` |
-| Key 创建 | `POST` | `/api/sandbox/organizations/:organization_id/tokens` | `X-Sandbox-Secret` |
-| Key 删除 | `DELETE` | `/api/sandbox/token/self` | `Authorization: Bearer sk-...` |
-| Key 日志查询 | `GET` | `/api/sandbox/log/self` | `Authorization: Bearer sk-...` |
+```bash
+BASE_URL="https://hk.apitoken.ai"
+SECRET="gkmBHwR7EXHtzukrEjtf"
+ORG_ID="org-123456"
+SANDBOX_KEY="sk-替换成实际返回的key"
+```
+
+### 1. 创建沙盒组织
+
+```bash
+curl -X POST "$BASE_URL/api/sandbox/organizations" \
+  -H "Content-Type: application/json" \
+  -H "X-Sandbox-Secret: $SECRET" \
+  -d '{
+    "organization_id": "'"$ORG_ID"'"
+  }'
+```
+
+### 2. 为组织新增 Key，使用默认额度与默认有效期
+
+默认行为：
+
+- `remain_amount_usd = 5.0`
+- `expired_time = -1`
+
+```bash
+curl -X POST "$BASE_URL/api/sandbox/organizations/$ORG_ID/tokens" \
+  -H "Content-Type: application/json" \
+  -H "X-Sandbox-Secret: $SECRET" \
+  -d '{}'
+```
+
+### 3. 为组织新增 Key，指定初始额度与有效期
+
+```bash
+curl -X POST "$BASE_URL/api/sandbox/organizations/$ORG_ID/tokens" \
+  -H "Content-Type: application/json" \
+  -H "X-Sandbox-Secret: $SECRET" \
+  -d '{
+    "remain_amount_usd": 8.5,
+    "expired_time": 1783267200
+  }'
+```
+
+### 4. 当前 Key 自助修改额度与有效期
+
+```bash
+curl -X PUT "$BASE_URL/api/sandbox/token/self" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $SANDBOX_KEY" \
+  -d '{
+    "remain_amount_usd": 3.25,
+    "expired_time": 1783267200
+  }'
+```
+
+### 5. 当前 Key 自助删除
+
+```bash
+curl -X DELETE "$BASE_URL/api/sandbox/token/self" \
+  -H "Authorization: Bearer $SANDBOX_KEY"
+```
+
+### 6. 查询当前 Key 的全部日志
+
+```bash
+curl "$BASE_URL/api/sandbox/log/self" \
+  -H "Authorization: Bearer $SANDBOX_KEY"
+```
+
+### 7. 查询当前 Key 的日志明细与汇总时间段
+
+```bash
+curl "$BASE_URL/api/sandbox/log/self?log_start_timestamp=1780675200&log_end_timestamp=1780761600&summary_start_timestamp=1780588800&summary_end_timestamp=1781193600&p=1&size=10" \
+  -H "Authorization: Bearer $SANDBOX_KEY"
+```
+
+---
+
+## 当前实现说明
+
+### 当前路由
+
+| 接口       | 方法       | 路径                                                   | 鉴权                             |
+| -------- | -------- | ---------------------------------------------------- | ------------------------------ |
+| 沙盒组织创建   | `POST`   | `/api/sandbox/organizations`                         | `X-Sandbox-Secret`             |
+| Key 配置修改 | `PUT`    | `/api/sandbox/token/self`                            | `Authorization: Bearer sk-...` |
+| Key 创建   | `POST`   | `/api/sandbox/organizations/:organization_id/tokens` | `X-Sandbox-Secret`             |
+| Key 删除   | `DELETE` | `/api/sandbox/token/self`                            | `Authorization: Bearer sk-...` |
+| Key 日志查询 | `GET`    | `/api/sandbox/log/self`                              | `Authorization: Bearer sk-...` |
 
 ### 关键业务语义
 
