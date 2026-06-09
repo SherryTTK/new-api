@@ -49,8 +49,9 @@ const CARD_STYLES = {
   container:
     'w-12 h-12 rounded-2xl flex items-center justify-center relative shadow-md',
   icon: 'w-8 h-8 flex items-center justify-center',
-  selected: 'border-blue-500 bg-blue-50',
-  default: 'border-gray-200 hover:border-gray-300',
+  selected: 'border-cyan-400 bg-cyan-400/10 shadow-cyan-500/10',
+  default:
+    'border-slate-700/80 bg-slate-950/35 hover:border-cyan-300/40 hover:bg-slate-900/60',
 };
 
 const PricingCardView = ({
@@ -263,7 +264,7 @@ const PricingCardView = ({
                   <div className='flex items-start space-x-3 flex-1 min-w-0'>
                     {getModelIcon(model)}
                     <div className='flex-1 min-w-0'>
-                      <h3 className='text-lg font-bold text-gray-900 truncate'>
+                      <h3 className='text-lg font-bold text-slate-100 truncate'>
                         {model.model_name}
                       </h3>
                       <div className='flex flex-col gap-1 text-xs mt-1'>
@@ -317,7 +318,7 @@ const PricingCardView = ({
                   {showRatio && (
                     <div className='pt-3'>
                       <div className='flex items-center space-x-1 mb-2'>
-                        <span className='text-xs font-medium text-gray-700'>
+                        <span className='text-xs font-medium text-slate-200'>
                           {t('倍率信息')}
                         </span>
                         <Tooltip
@@ -334,7 +335,7 @@ const PricingCardView = ({
                           />
                         </Tooltip>
                       </div>
-                      <div className='grid grid-cols-3 gap-2 text-xs text-gray-600'>
+                      <div className='grid grid-cols-3 gap-2 text-xs text-slate-400'>
                         <div>
                           {t('模型')}:{' '}
                           {model.quota_type === 0 ? model.model_ratio : t('无')}

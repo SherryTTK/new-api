@@ -240,6 +240,7 @@ const ConsolePricing = () => {
                 color: 'cyan',
                 shape: 'circle',
                 size: 'small',
+                className: 'console-pricing__modelTag',
               })}
             </span>
             {record.vendor_name && (

@@ -742,6 +742,7 @@ export function renderModelTag(modelName, options = {}) {
     shape = 'circle',
     onClick,
     suffixIcon,
+    className,
   } = options;
 
   const categories = getModelCategories(i18next.t);
@@ -762,6 +763,7 @@ export function renderModelTag(modelName, options = {}) {
       size={size}
       shape={shape}
       onClick={onClick}
+      className={className}
     >
       {modelName}
     </Tag>

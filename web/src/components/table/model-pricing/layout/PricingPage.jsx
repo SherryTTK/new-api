@@ -40,7 +40,7 @@ const PricingPage = () => {
   };
 
   return (
-    <div className='bg-white'>
+    <div className='pricing-page-shell bg-transparent'>
       <Layout className='pricing-layout'>
         {!isMobile && (
           <Sider className='pricing-scroll-hide pricing-sidebar'>
@@ -64,6 +64,7 @@ const PricingPage = () => {
       />
 
       <ModelDetailSideSheet
+        className='pricing-page__detailSheet'
         visible={pricingData.showModelDetail}
         onClose={pricingData.closeModelDetail}
         modelData={pricingData.selectedModel}

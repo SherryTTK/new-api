@@ -688,6 +688,7 @@ const RegisterForm = () => {
                     className='landing-login__input'
                     size='large'
                     prefix={<IconUser />}
+                    autoComplete='username'
                     placeholder={t('请输入用户名')}
                     value={inputs.username}
                     onChange={(value) => handleChange('username', value)}
@@ -701,6 +702,7 @@ const RegisterForm = () => {
                     className='landing-login__input'
                     size='large'
                     prefix={<IconLock />}
+                    autoComplete='new-password'
                     placeholder={t('输入密码，最短 8 位，最长 20 位')}
                     mode='password'
                     value={inputs.password}
@@ -715,6 +717,7 @@ const RegisterForm = () => {
                     className='landing-login__input'
                     size='large'
                     prefix={<IconLock />}
+                    autoComplete='new-password'
                     placeholder={t('确认密码')}
                     mode='password'
                     value={inputs.password2}
@@ -731,6 +734,7 @@ const RegisterForm = () => {
                         className='landing-login__input'
                         size='large'
                         prefix={<IconMail />}
+                        autoComplete='email'
                         placeholder={t('输入邮箱地址')}
                         value={inputs.email}
                         onChange={(value) => handleChange('email', value)}

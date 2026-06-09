@@ -95,8 +95,12 @@ const PricingTable = ({
 
   const ModelTable = useMemo(
     () => (
-      <Card className='!rounded-xl overflow-hidden' bordered={false}>
+      <Card
+        className='pricing-page__tableCard !rounded-xl overflow-hidden'
+        bordered={false}
+      >
         <Table
+          className='pricing-page__table'
           columns={processedColumns}
           dataSource={filteredModels}
           loading={loading}

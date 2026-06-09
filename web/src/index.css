@@ -717,26 +717,51 @@ html.dark .sbg-variant-green {
   background: rgba(7, 14, 25, 0.78);
 }
 
+.console-pricing__tableWrap .semi-table-container,
+.console-pricing__tableWrap .semi-table-header,
+.console-pricing__tableWrap .semi-table-body,
+.console-pricing__tableWrap .semi-table-placeholder {
+  background: rgba(7, 14, 25, 0.92) !important;
+}
+
 .console-pricing__tableWrap .semi-table {
-  background: transparent;
-  color: #edf5ff;
+  background: transparent !important;
+  color: #edf5ff !important;
+}
+
+.console-pricing__tableWrap .semi-table-header table,
+.console-pricing__tableWrap .semi-table-body table,
+.console-pricing__tableWrap .semi-table-placeholder table {
+  background: transparent !important;
+}
+
+.console-pricing__tableWrap .semi-table-header thead,
+.console-pricing__tableWrap .semi-table-header tr,
+.console-pricing__tableWrap .semi-table-header th,
+.console-pricing__tableWrap .semi-table-body tbody,
+.console-pricing__tableWrap .semi-table-body tr,
+.console-pricing__tableWrap .semi-table-body td,
+.console-pricing__tableWrap .semi-table-placeholder tbody,
+.console-pricing__tableWrap .semi-table-placeholder tr,
+.console-pricing__tableWrap .semi-table-placeholder td {
+  background: transparent !important;
 }
 
 .console-pricing__tableWrap .semi-table-thead > .semi-table-row > .semi-table-row-head {
-  background: rgba(12, 22, 35, 0.92);
+  background: rgba(12, 22, 35, 0.92) !important;
   border-bottom-color: rgba(148, 163, 184, 0.16);
-  color: rgba(226, 232, 240, 0.82);
+  color: rgba(226, 232, 240, 0.82) !important;
   font-weight: 700;
 }
 
 .console-pricing__tableWrap .semi-table-tbody > .semi-table-row > .semi-table-row-cell {
-  background: transparent;
+  background: transparent !important;
   border-bottom-color: rgba(148, 163, 184, 0.1);
-  color: #edf5ff;
+  color: #edf5ff !important;
 }
 
 .console-pricing__tableWrap .semi-table-tbody > .semi-table-row:hover > .semi-table-row-cell {
-  background: rgba(96, 246, 255, 0.04);
+  background: rgba(96, 246, 255, 0.04) !important;
 }
 
 .console-pricing__tableWrap .semi-table-placeholder,
@@ -764,6 +789,17 @@ html.dark .sbg-variant-green {
 .console-pricing__modelTagWrap {
   display: inline-flex;
   align-items: center;
+}
+
+.console-pricing__modelTag {
+  background: rgba(34, 211, 238, 0.14) !important;
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  color: #d9fbff !important;
+}
+
+.console-pricing__modelTag .semi-tag-content,
+.console-pricing__modelTag .semi-tag-prefix-icon {
+  color: inherit !important;
 }
 
 .console-pricing__modelMeta {
@@ -862,6 +898,18 @@ html.dark .sbg-variant-green {
   color: #f8fbff;
 }
 
+.console-pricing__detailSheet {
+  --semi-color-text-0: #f3feff;
+  --semi-color-text-1: rgba(232, 252, 255, 0.88);
+  --semi-color-text-2: rgba(199, 241, 247, 0.74);
+  --semi-color-primary: #8eeeff;
+  --semi-color-border: rgba(148, 163, 184, 0.18);
+  --semi-color-fill-0: rgba(8, 21, 31, 0.92);
+  --semi-color-fill-1: rgba(12, 28, 40, 0.92);
+  --semi-color-bg-1: rgba(9, 24, 35, 0.92);
+  --semi-color-bg-2: rgba(13, 29, 40, 0.96);
+}
+
 .console-pricing__detailSheet .semi-sidesheet-content {
   background: linear-gradient(180deg, #07111d 0%, #0c1724 100%);
   color: #edf5ff;
@@ -875,6 +923,11 @@ html.dark .sbg-variant-green {
 .console-pricing__detailSheet .semi-card {
   background: rgba(15, 23, 42, 0.72);
   border-color: rgba(148, 163, 184, 0.14);
+}
+
+.console-pricing__detailSheet .semi-typography,
+.console-pricing__detailSheet .semi-card-body {
+  color: #edf5ff;
 }
 
 .console-pricing__detailSheet .semi-table {
@@ -894,7 +947,15 @@ html.dark .sbg-variant-green {
 }
 
 .console-pricing__detailSheet .semi-tag {
+  background: rgba(15, 23, 42, 0.82);
+  color: #edf5ff;
   border-color: rgba(148, 163, 184, 0.18);
+}
+
+.console-pricing__detailSheet .semi-tag .semi-tag-content,
+.console-pricing__detailSheet .semi-tag .semi-tag-prefix-icon,
+.console-pricing__detailSheet .semi-tag .semi-tag-suffix-icon {
+  color: inherit !important;
 }
 
 @media (max-width: 1024px) {
@@ -1346,6 +1407,20 @@ html.dark .with-pastel-balls::before {
 }
 
 /* ==================== 模型定价页面布局 ==================== */
+.pricing-page-shell {
+  color: #edf5ff;
+  --semi-color-text-0: #f3feff;
+  --semi-color-text-1: rgba(232, 252, 255, 0.88);
+  --semi-color-text-2: rgba(199, 241, 247, 0.74);
+  --semi-color-primary: #8eeeff;
+  --semi-color-border: rgba(148, 163, 184, 0.18);
+  --semi-color-fill-0: rgba(8, 21, 31, 0.92);
+  --semi-color-fill-1: rgba(12, 28, 40, 0.92);
+  --semi-color-bg-0: rgba(7, 14, 25, 0.94);
+  --semi-color-bg-1: rgba(9, 24, 35, 0.92);
+  --semi-color-bg-2: rgba(13, 29, 40, 0.96);
+}
+
 .pricing-layout {
   height: calc(100vh - 60px);
   overflow: hidden;
@@ -1397,6 +1472,155 @@ html.dark .with-pastel-balls::before {
   flex: 1;
   overflow: auto;
   min-height: 0;
+}
+
+.pricing-page-shell .semi-card {
+  background: rgba(7, 14, 25, 0.78);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.pricing-page__tableCard,
+.pricing-view-container .semi-table-wrapper,
+.pricing-view-container-mobile .semi-table-wrapper {
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(7, 14, 25, 0.78);
+}
+
+.pricing-view-container .semi-table-container,
+.pricing-view-container .semi-table-header,
+.pricing-view-container .semi-table-body,
+.pricing-view-container .semi-table-placeholder,
+.pricing-view-container-mobile .semi-table-container,
+.pricing-view-container-mobile .semi-table-header,
+.pricing-view-container-mobile .semi-table-body,
+.pricing-view-container-mobile .semi-table-placeholder {
+  background: rgba(7, 14, 25, 0.94) !important;
+}
+
+.pricing-view-container .semi-table,
+.pricing-view-container-mobile .semi-table {
+  background: transparent !important;
+  color: #edf5ff !important;
+}
+
+.pricing-view-container .semi-table-header table,
+.pricing-view-container .semi-table-body table,
+.pricing-view-container .semi-table-placeholder table,
+.pricing-view-container-mobile .semi-table-header table,
+.pricing-view-container-mobile .semi-table-body table,
+.pricing-view-container-mobile .semi-table-placeholder table {
+  background: transparent !important;
+}
+
+.pricing-view-container .semi-table-thead > .semi-table-row > .semi-table-row-head,
+.pricing-view-container-mobile
+  .semi-table-thead
+  > .semi-table-row
+  > .semi-table-row-head {
+  background: rgba(12, 22, 35, 0.92);
+  border-bottom-color: rgba(148, 163, 184, 0.16);
+  color: rgba(226, 232, 240, 0.82);
+}
+
+.pricing-view-container .semi-table-tbody > .semi-table-row > .semi-table-row-cell,
+.pricing-view-container-mobile
+  .semi-table-tbody
+  > .semi-table-row
+  > .semi-table-row-cell {
+  background: transparent;
+  border-bottom-color: rgba(148, 163, 184, 0.1);
+  color: #edf5ff;
+}
+
+.pricing-view-container .semi-table-tbody > .semi-table-row:hover > .semi-table-row-cell,
+.pricing-view-container-mobile
+  .semi-table-tbody
+  > .semi-table-row:hover
+  > .semi-table-row-cell {
+  background: rgba(96, 246, 255, 0.04);
+}
+
+.pricing-view-container .semi-table-placeholder,
+.pricing-view-container .semi-empty-description,
+.pricing-view-container-mobile .semi-table-placeholder,
+.pricing-view-container-mobile .semi-empty-description {
+  color: rgba(214, 228, 241, 0.72);
+}
+
+.pricing-page-shell .semi-table-selection .semi-checkbox-inner-display {
+  background: rgba(15, 23, 42, 0.82);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.pricing-page-shell .semi-tag,
+.pricing-page__modelTag,
+.pricing-page__infoTag,
+.pricing-page__detailSheet .semi-tag {
+  background: rgba(15, 23, 42, 0.82) !important;
+  color: #edf5ff !important;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.pricing-page-shell .semi-tag .semi-tag-content,
+.pricing-page-shell .semi-tag .semi-tag-prefix-icon,
+.pricing-page__modelTag .semi-tag-content,
+.pricing-page__modelTag .semi-tag-prefix-icon,
+.pricing-page__infoTag .semi-tag-content,
+.pricing-page__infoTag .semi-tag-prefix-icon,
+.pricing-page__detailSheet .semi-tag .semi-tag-content,
+.pricing-page__detailSheet .semi-tag .semi-tag-prefix-icon,
+.pricing-page__detailSheet .semi-tag .semi-tag-suffix-icon {
+  color: inherit !important;
+}
+
+.pricing-page__detailSheet {
+  --semi-color-text-0: #f3feff;
+  --semi-color-text-1: rgba(232, 252, 255, 0.88);
+  --semi-color-text-2: rgba(199, 241, 247, 0.74);
+  --semi-color-primary: #8eeeff;
+  --semi-color-border: rgba(148, 163, 184, 0.18);
+  --semi-color-fill-0: rgba(8, 21, 31, 0.92);
+  --semi-color-fill-1: rgba(12, 28, 40, 0.92);
+  --semi-color-bg-1: rgba(9, 24, 35, 0.92);
+  --semi-color-bg-2: rgba(13, 29, 40, 0.96);
+}
+
+.pricing-page__detailSheet .semi-sidesheet-content {
+  background: linear-gradient(180deg, #07111d 0%, #0c1724 100%);
+  color: #edf5ff;
+}
+
+.pricing-page__detailSheet .semi-sidesheet-header {
+  background: rgba(9, 17, 29, 0.94);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.pricing-page__detailSheet .semi-card {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.pricing-page__detailSheet .semi-typography,
+.pricing-page__detailSheet .semi-card-body {
+  color: #edf5ff;
+}
+
+.pricing-page__detailSheet .semi-table {
+  background: transparent;
+  color: #edf5ff;
+}
+
+.pricing-page__detailSheet .semi-table-thead > .semi-table-row > .semi-table-row-head {
+  background: rgba(12, 22, 35, 0.92);
+  color: rgba(226, 232, 240, 0.82);
+}
+
+.pricing-page__detailSheet .semi-table-tbody > .semi-table-row > .semi-table-row-cell {
+  background: transparent;
+  color: #edf5ff;
+  border-bottom-color: rgba(148, 163, 184, 0.1);
 }
 
 /* ==================== semi-ui 组件自定义样式 ==================== */

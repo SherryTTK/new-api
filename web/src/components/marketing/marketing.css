@@ -748,6 +748,20 @@
   color: rgba(228, 252, 255, 0.54);
 }
 
+.landing-pricing {
+  color: #ecfdff;
+  --semi-color-text-0: #f3feff;
+  --semi-color-text-1: rgba(232, 252, 255, 0.88);
+  --semi-color-text-2: rgba(199, 241, 247, 0.74);
+  --semi-color-primary: #8eeeff;
+  --semi-color-border: rgba(133, 240, 255, 0.12);
+  --semi-color-fill-0: rgba(8, 21, 31, 0.92);
+  --semi-color-fill-1: rgba(12, 28, 40, 0.92);
+  --semi-color-bg-0: rgba(8, 14, 22, 0.96);
+  --semi-color-bg-1: rgba(9, 24, 35, 0.92);
+  --semi-color-bg-2: rgba(13, 29, 40, 0.96);
+}
+
 .landing-pricing__hero {
   display: flex;
   align-items: flex-start;
@@ -1043,28 +1057,50 @@
 }
 
 .landing-pricing__tableWrap .semi-table-wrapper {
-  background: transparent;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(8, 14, 22, 0.96);
+}
+
+.landing-pricing__tableWrap .semi-table-container,
+.landing-pricing__tableWrap .semi-table-header,
+.landing-pricing__tableWrap .semi-table-body,
+.landing-pricing__tableWrap .semi-table-placeholder {
+  background: rgba(8, 14, 22, 0.96) !important;
 }
 
 .landing-pricing__tableWrap .semi-table {
-  background: transparent;
-  color: #ecfdff;
+  background: transparent !important;
+  color: #ecfdff !important;
+}
+
+.landing-pricing__tableWrap .semi-table-header table,
+.landing-pricing__tableWrap .semi-table-body table,
+.landing-pricing__tableWrap .semi-table-placeholder table {
+  background: transparent !important;
 }
 
 .landing-pricing__tableWrap .semi-table-thead > .semi-table-row > .semi-table-row-head {
-  background: rgba(255, 255, 255, 0.02);
-  color: rgba(235, 252, 255, 0.78);
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: rgba(235, 252, 255, 0.78) !important;
   border-bottom: 1px solid rgba(133, 240, 255, 0.08);
 }
 
 .landing-pricing__tableWrap .semi-table-tbody > .semi-table-row > .semi-table-row-cell {
   border-bottom: 1px solid rgba(133, 240, 255, 0.05);
-  background: transparent;
-  color: #ecfdff;
+  background: transparent !important;
+  color: #ecfdff !important;
 }
 
 .landing-pricing__tableWrap .semi-table-row:hover > .semi-table-row-cell {
-  background: rgba(86, 196, 255, 0.03);
+  background: rgba(86, 196, 255, 0.03) !important;
+}
+
+.landing-pricing__tableWrap
+  .semi-table-tbody
+  > .semi-table-row.semi-table-row-selected
+  > .semi-table-row-cell {
+  background: rgba(86, 196, 255, 0.08) !important;
 }
 
 .landing-pricing__tableWrap .semi-table-placeholder {
@@ -1073,6 +1109,13 @@
 
 .landing-pricing__tableWrap .semi-empty-description {
   color: rgba(229, 252, 255, 0.58);
+}
+
+.landing-pricing__tableWrap
+  .semi-table-selection
+  .semi-checkbox-inner-display {
+  background: rgba(8, 14, 22, 0.96);
+  border-color: rgba(133, 240, 255, 0.22);
 }
 
 .landing-pricing__tag {
@@ -1116,6 +1159,18 @@
   align-items: center;
   gap: 8px;
   font-weight: 700;
+  color: #ecfdff;
+}
+
+.landing-pricing__modelTag {
+  background: rgba(115, 92, 255, 0.18) !important;
+  border: 1px solid rgba(141, 120, 255, 0.22);
+  color: #efe9ff !important;
+}
+
+.landing-pricing__modelTag .semi-tag-content,
+.landing-pricing__modelTag .semi-tag-prefix-icon {
+  color: inherit !important;
 }
 
 .landing-pricing__priceBlock {
@@ -1173,6 +1228,18 @@
   color: #ecfdff;
 }
 
+.landing-pricing__detailSheet {
+  --semi-color-text-0: #f3feff;
+  --semi-color-text-1: rgba(232, 252, 255, 0.88);
+  --semi-color-text-2: rgba(199, 241, 247, 0.74);
+  --semi-color-primary: #8eeeff;
+  --semi-color-border: rgba(133, 240, 255, 0.12);
+  --semi-color-fill-0: rgba(8, 21, 31, 0.92);
+  --semi-color-fill-1: rgba(12, 28, 40, 0.92);
+  --semi-color-bg-1: rgba(9, 24, 35, 0.92);
+  --semi-color-bg-2: rgba(13, 29, 40, 0.96);
+}
+
 .landing-pricing__detailSheet .semi-sidesheet-content {
   background: linear-gradient(180deg, #0a1118 0%, #0a121c 100%);
   color: #ecfdff;
@@ -1189,8 +1256,20 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+.landing-pricing__detailSheet .semi-typography,
+.landing-pricing__detailSheet .semi-card-body {
+  color: #ecfdff;
+}
+
+.landing-pricing__detailSheet .semi-table-wrapper,
+.landing-pricing__detailSheet .semi-table-header,
+.landing-pricing__detailSheet .semi-table-body {
+  background: transparent;
+}
+
 .landing-pricing__detailSheet .semi-table-thead > .semi-table-row > .semi-table-row-head {
   background: rgba(255, 255, 255, 0.02);
+  color: rgba(235, 252, 255, 0.78);
 }
 
 .landing-pricing__detailSheet .semi-table-tbody > .semi-table-row > .semi-table-row-cell {
@@ -1201,6 +1280,14 @@
 
 .landing-pricing__detailSheet .semi-tag {
   background: rgba(255, 255, 255, 0.06);
+  color: #ecfdff;
+  border: 1px solid rgba(133, 240, 255, 0.12);
+}
+
+.landing-pricing__detailSheet .semi-tag .semi-tag-content,
+.landing-pricing__detailSheet .semi-tag .semi-tag-prefix-icon,
+.landing-pricing__detailSheet .semi-tag .semi-tag-suffix-icon {
+  color: inherit !important;
 }
 
 .landing-privacy {
@@ -2636,8 +2723,18 @@
   box-shadow: none;
 }
 
+.landing-login__input.semi-input-wrapper:hover,
+.landing-login__input.semi-input-wrapper:focus-within,
+.landing-login__input .semi-input-wrapper:hover,
+.landing-login__input .semi-input-wrapper:focus-within {
+  border-color: rgba(126, 239, 255, 0.28);
+  background: rgba(8, 23, 34, 0.98);
+}
+
 .landing-login__input input {
   color: #f8ffff;
+  background: transparent !important;
+  caret-color: #8feeff;
 }
 
 .landing-login__input input::placeholder {
@@ -2646,6 +2743,39 @@
 
 .landing-login__input .semi-input-prefix {
   color: rgba(121, 234, 255, 0.66);
+}
+
+.landing-login__input .semi-input-suffix,
+.landing-login__input .semi-input-suffix button,
+.landing-login__input .semi-input-suffix .semi-button,
+.landing-login__input .semi-input-suffix .semi-icon,
+.landing-login__input .semi-input-clearbtn {
+  background: transparent !important;
+  color: rgba(177, 240, 250, 0.82) !important;
+}
+
+.landing-login__input .semi-input-suffix button:hover,
+.landing-login__input .semi-input-suffix .semi-button:hover,
+.landing-login__input .semi-input-clearbtn:hover {
+  color: #f3feff !important;
+  background: rgba(126, 239, 255, 0.08) !important;
+}
+
+.landing-login__input input:-webkit-autofill,
+.landing-login__input input:-webkit-autofill:hover,
+.landing-login__input input:-webkit-autofill:focus,
+.landing-login__input input:-webkit-autofill:active {
+  -webkit-text-fill-color: #f8ffff !important;
+  caret-color: #8feeff !important;
+  box-shadow: 0 0 0 1000px rgba(8, 23, 34, 0.98) inset !important;
+  -webkit-box-shadow: 0 0 0 1000px rgba(8, 23, 34, 0.98) inset !important;
+  transition: background-color 99999s ease-out 0s;
+}
+
+.landing-login__input input:-moz-autofill {
+  box-shadow: 0 0 0 1000px rgba(8, 23, 34, 0.98) inset !important;
+  -moz-text-fill-color: #f8ffff !important;
+  caret-color: #8feeff !important;
 }
 
 .landing-login__agreement {
@@ -2779,6 +2909,22 @@
 }
 
 .landing-chat-api {
+  color: #ecfdff;
+  --semi-color-text-0: #f3feff;
+  --semi-color-text-1: rgba(232, 252, 255, 0.88);
+  --semi-color-text-2: rgba(199, 241, 247, 0.74);
+  --semi-color-primary: #8eeeff;
+  --semi-color-border: rgba(123, 237, 255, 0.12);
+  --semi-color-fill-0: rgba(8, 21, 31, 0.92);
+  --semi-color-fill-1: rgba(12, 28, 40, 0.92);
+  --semi-color-bg-1: rgba(9, 24, 35, 0.92);
+  --semi-color-bg-2: rgba(13, 29, 40, 0.96);
+  --semi-color-warning: #ffd36a;
+  --semi-color-success: #8df7c8;
+  --semi-color-info: #9fd8ff;
+  --semi-color-tertiary: #c9b6ff;
+  --semi-color-danger-light-default: rgba(255, 123, 123, 0.14);
+  --semi-color-success-light-default: rgba(141, 247, 200, 0.14);
   background:
     radial-gradient(circle at 12% 4%, rgba(58, 130, 255, 0.42), transparent 22%),
     radial-gradient(circle at 84% 0%, rgba(0, 227, 198, 0.2), transparent 26%),
@@ -2839,6 +2985,7 @@
   font-size: clamp(38px, 5vw, 62px);
   line-height: 1.05;
   letter-spacing: -0.04em;
+  color: #f5feff;
 }
 
 .landing-chat-api__titleAccent {

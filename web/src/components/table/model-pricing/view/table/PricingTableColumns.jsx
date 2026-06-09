@@ -37,13 +37,13 @@ function renderQuotaType(type, t) {
   switch (type) {
     case 1:
       return (
-        <Tag color='teal' shape='circle'>
+        <Tag color='teal' shape='circle' className='pricing-page__infoTag'>
           {t('按次计费')}
         </Tag>
       );
     case 0:
       return (
-        <Tag color='violet' shape='circle'>
+        <Tag color='violet' shape='circle' className='pricing-page__infoTag'>
           {t('按量计费')}
         </Tag>
       );
@@ -60,6 +60,7 @@ const renderVendor = (vendorName, vendorIcon, t) => {
       color='white'
       shape='circle'
       prefixIcon={getLobeHubIcon(vendorIcon || 'Layers', 14)}
+      className='pricing-page__infoTag'
     >
       {vendorName}
     </Tag>
@@ -78,6 +79,7 @@ const renderTags = (text) => {
         color={stringToColor(tag.trim())}
         shape='circle'
         size='small'
+        className='pricing-page__infoTag'
       >
         {tag.trim()}
       </Tag>
@@ -93,7 +95,12 @@ function renderSupportedEndpoints(endpoints) {
   return (
     <Space wrap>
       {endpoints.map((endpoint, idx) => (
-        <Tag key={endpoint} color={stringToColor(endpoint)} shape='circle'>
+        <Tag
+          key={endpoint}
+          color={stringToColor(endpoint)}
+          shape='circle'
+          className='pricing-page__infoTag'
+        >
           {endpoint}
         </Tag>
       ))}
@@ -147,6 +154,7 @@ export const getPricingTableColumns = ({
     dataIndex: 'model_name',
     render: (text, record, index) => {
       return renderModelTag(text, {
+        className: 'pricing-page__modelTag',
         onClick: () => {
           copyText(text);
         },
@@ -213,14 +221,14 @@ export const getPricingTableColumns = ({
 
       return (
         <div className='space-y-1'>
-          <div className='text-gray-700'>
+          <div className='text-slate-200'>
             {t('模型倍率')}：{record.quota_type === 0 ? text : t('无')}
           </div>
-          <div className='text-gray-700'>
+          <div className='text-slate-200'>
             {t('补全倍率')}：
             {record.quota_type === 0 ? completionRatio : t('无')}
           </div>
-          <div className='text-gray-700'>
+          <div className='text-slate-200'>
             {t('分组倍率')}：{priceData?.usedGroupRatio ?? '-'}
           </div>
         </div>
@@ -239,7 +247,7 @@ export const getPricingTableColumns = ({
       return (
         <div className='space-y-1'>
           {priceItems.map((item) => (
-            <div key={item.key} className='text-gray-700'>
+            <div key={item.key} className='text-slate-200'>
               {item.label} {item.value}
               {item.suffix}
             </div>

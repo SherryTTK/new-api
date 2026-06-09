@@ -212,6 +212,7 @@ const Pricing = () => {
             color: 'violet',
             shape: 'circle',
             size: 'small',
+            className: 'landing-pricing__modelTag',
           })}
         </button>
       ),

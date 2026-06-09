@@ -781,6 +781,7 @@ const LoginForm = () => {
                     className='landing-login__input'
                     size='large'
                     prefix={<IconMail />}
+                    autoComplete='username'
                     placeholder={t('请输入您的用户名或邮箱地址')}
                     value={inputs.username}
                     onChange={(value) => handleChange('username', value)}
@@ -794,6 +795,7 @@ const LoginForm = () => {
                     className='landing-login__input'
                     size='large'
                     prefix={<IconLock />}
+                    autoComplete='current-password'
                     placeholder={t('请输入您的密码')}
                     mode='password'
                     value={inputs.password}

@@ -130,10 +130,10 @@ const ModelPricingTable = ({
         <div className='space-y-1'>
           {items.map((item) => (
             <div key={item.key}>
-              <div className='font-semibold text-orange-600'>
+              <div className='font-semibold text-amber-300'>
                 {item.label} {item.value}
               </div>
-              <div className='text-xs text-gray-500'>{item.suffix}</div>
+              <div className='text-xs text-slate-400'>{item.suffix}</div>
             </div>
           ))}
         </div>
@@ -159,23 +159,29 @@ const ModelPricingTable = ({
           <IconCoinMoneyStroked size={16} />
         </Avatar>
         <div>
-          <Text className='text-lg font-medium'>{t('分组价格')}</Text>
-          <div className='text-xs text-gray-600'>
+          <Text className='text-lg font-medium text-slate-100'>
+            {t('分组价格')}
+          </Text>
+          <div className='text-xs text-slate-400'>
             {t('不同用户分组的价格信息')}
           </div>
         </div>
       </div>
       {autoChain.length > 0 && (
         <div className='flex flex-wrap items-center gap-1 mb-4'>
-          <span className='text-sm text-gray-600'>{t('auto分组调用链路')}</span>
-          <span className='text-sm'>→</span>
+          <span className='text-sm text-slate-400'>
+            {t('auto分组调用链路')}
+          </span>
+          <span className='text-sm text-slate-300'>→</span>
           {autoChain.map((g, idx) => (
             <React.Fragment key={g}>
               <Tag color='white' size='small' shape='circle'>
                 {g}
                 {t('分组')}
               </Tag>
-              {idx < autoChain.length - 1 && <span className='text-sm'>→</span>}
+              {idx < autoChain.length - 1 && (
+                <span className='text-sm text-slate-300'>→</span>
+              )}
             </React.Fragment>
           ))}
         </div>
