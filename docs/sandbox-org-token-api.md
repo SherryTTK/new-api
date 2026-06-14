@@ -14,6 +14,7 @@
 
 - Base URL：`https://hk.apitoken.ai`
 - 固定请求头：`X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf`
+- 当前实现中，这 5 个沙盒接口不受应用内请求限流影响
 
 ### 鉴权约定
 

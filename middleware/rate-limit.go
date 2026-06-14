@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -16,6 +17,14 @@ var inMemoryRateLimiter common.InMemoryRateLimiter
 
 var defNext = func(c *gin.Context) {
 	c.Next()
+}
+
+func isSandboxRateLimitExempt(c *gin.Context) bool {
+	if c == nil || c.Request == nil || c.Request.URL == nil {
+		return false
+	}
+	path := c.Request.URL.Path
+	return path == "/api/sandbox" || strings.HasPrefix(path, "/api/sandbox/")
 }
 
 func redisRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark string) {
@@ -76,12 +85,20 @@ func memoryRateLimiter(c *gin.Context, maxRequestNum int, duration int64, mark s
 func rateLimitFactory(maxRequestNum int, duration int64, mark string) func(c *gin.Context) {
 	if common.RedisEnabled {
 		return func(c *gin.Context) {
+			if isSandboxRateLimitExempt(c) {
+				c.Next()
+				return
+			}
 			redisRateLimiter(c, maxRequestNum, duration, mark)
 		}
 	} else {
 		// It's safe to call multi times.
 		inMemoryRateLimiter.Init(common.RateLimitKeyExpirationDuration)
 		return func(c *gin.Context) {
+			if isSandboxRateLimitExempt(c) {
+				c.Next()
+				return
+			}
 			memoryRateLimiter(c, maxRequestNum, duration, mark)
 		}
 	}
