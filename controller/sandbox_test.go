@@ -108,8 +108,8 @@ func setupSandboxControllerTest(t *testing.T) {
 	common.DebugEnabled = false
 	common.IsMasterNode = true
 
-	require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"default":1,"sandbox":1}`))
-	require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(`{"default":"default","sandbox":"sandbox"}`))
+	require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"default":1,"sandbox":1,"sandbox-China":1}`))
+	require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(`{"default":"default","sandbox":"sandbox","sandbox-China":"sandbox-China"}`))
 	require.NoError(t, model.InitDB())
 	require.NoError(t, model.InitLogDB())
 
@@ -286,11 +286,31 @@ func TestSandboxOrganizationAndTokenCreation(t *testing.T) {
 	require.Equal(t, 8.5, customToken.RemainAmountUSD)
 	require.Equal(t, expiredTime, customToken.ExpiredTime)
 
+	chinaToken := createSandboxTokenForTest(t, router, "org-123456", gin.H{
+		"group": "sandbox-China",
+	})
+	require.Equal(t, "sandbox-China", chinaToken.Group)
+
+	chinaTokenModel, err := model.GetTokenById(chinaToken.TokenID)
+	require.NoError(t, err)
+	require.Equal(t, "sandbox-China", chinaTokenModel.Group)
+
+	invalidGroupRecorder := performSandboxRequest(t, router, http.MethodPost, "/api/sandbox/organizations/org-123456/tokens", gin.H{
+		"group": "sandbox-US",
+	}, map[string]string{
+		"X-Sandbox-Secret": common.SandboxSecret,
+	})
+	require.Equal(t, http.StatusOK, invalidGroupRecorder.Code)
+
+	invalidGroupResponse := decodeSandboxResponse(t, invalidGroupRecorder)
+	require.False(t, invalidGroupResponse.Success)
+	require.Contains(t, invalidGroupResponse.Message, "group 仅支持")
+
 	var relationCount int64
 	require.NoError(t, model.DB.Model(&model.SandboxOrgToken{}).
 		Where("sandbox_organization_id = ?", organization.ID).
 		Count(&relationCount).Error)
-	require.Equal(t, int64(2), relationCount)
+	require.Equal(t, int64(3), relationCount)
 }
 
 func TestSandboxTokenSelfLifecycleAndLogs(t *testing.T) {

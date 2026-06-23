@@ -90,7 +90,6 @@ Authorization: Bearer sk-xxxxxxxx
 | 字段                     | 说明                      |
 | ---------------------- | ----------------------- |
 | `user_id`              | 固定为用户 `sandbox` 的 ID    |
-| `group`                | 固定为 `sandbox`           |
 | `unlimited_quota`      | 固定为 `false`             |
 | `model_limits_enabled` | 固定值                     |
 | `model_limits`         | 固定值                     |
@@ -104,6 +103,7 @@ Authorization: Bearer sk-xxxxxxxx
 | ------------------- | ------------------------------- |
 | `remain_amount_usd` | 新 Key 的初始额度，单位 USD              |
 | `expired_time`      | 新 Key 的初始有效期，Unix 秒；`-1` 表示永不过期 |
+| `group`             | 新 Key 的分组；仅支持 `sandbox` 和 `sandbox-China` |
 
 接口 `3` 的默认值：
 
@@ -111,6 +111,7 @@ Authorization: Bearer sk-xxxxxxxx
 | ------------------- | ----- | ------------- |
 | `remain_amount_usd` | `5.0` | 请求未传时，默认 5 美元 |
 | `expired_time`      | `-1`  | 请求未传时，默认永久有效  |
+| `group`             | `sandbox` | 请求未传或传空字符串时，默认 `sandbox` |
 
 金额单位约定：
 
@@ -126,7 +127,7 @@ Authorization: Bearer sk-xxxxxxxx
 
 - `sandbox` 用户必须存在
 - `sandbox` 用户必须为启用状态
-- `sandbox` 用户必须具备固定分组的可用权限
+- `sandbox` 用户必须具备目标分组的可用权限
 - `sandbox` 用户额度需由后台定期充值保障
 
 ### 通用响应格式
@@ -342,7 +343,8 @@ X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf
 ```json
 {
   "remain_amount_usd": 5.0,
-  "expired_time": -1
+  "expired_time": -1,
+  "group": "sandbox"
 }
 ```
 
@@ -358,6 +360,7 @@ X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf
 | ----------------- | ------ | --- | ------------------------------ |
 | remain_amount_usd | number | 否   | 新 Key 的初始额度，单位 USD；未传时默认 `5.0` |
 | expired_time      | int64  | 否   | 新 Key 的初始有效期，Unix 秒；未传时默认 `-1` |
+| group             | string | 否   | 新 Key 的分组；仅支持 `sandbox`、`sandbox-China`；未传或传空时默认 `sandbox` |
 
 说明：
 
@@ -373,8 +376,9 @@ X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf
 - 新 Key 绑定到专用用户 `sandbox`
 - `remain_amount_usd` 未传时默认按 `5.0 USD` 创建
 - `expired_time` 未传时默认按永久有效创建
+- `group` 仅支持 `sandbox` 和 `sandbox-China`
+- `group` 未传或传空字符串时默认按 `sandbox` 创建
 - `token.name` 固定为 `organization_id + 当前时间(精确到秒)`，建议格式为 `{organization_id}-{yyyyMMddHHmmss}`
-- `group` 固定为 `sandbox`
 - `user_id`、`unlimited_quota`、`model_limits_enabled`、`model_limits`、`allow_ips`、`cross_group_retry` 等配置仍由后端固定
 - 后端收到 USD 金额后需换算成系统内部 `quota` 再写入 `token.remain_quota`
 
@@ -392,6 +396,7 @@ org-123456-20260608153045
 
 - `remain_amount_usd >= 0`
 - `expired_time == -1` 或 `expired_time > 当前时间`
+- `group` 仅允许 `sandbox` 或 `sandbox-China`
 
 ### 成功响应示例
 
@@ -420,9 +425,10 @@ org-123456-20260608153045
 - `organization_id` 不存在
 - `remain_amount_usd` 非法
 - `expired_time` 非法
+- `group` 非法
 - `sandbox` 用户不存在
 - `sandbox` 用户被禁用
-- `sandbox` 用户不具备固定分组权限
+- `sandbox` 用户不具备目标分组权限
 - `sandbox` 用户 token 数量已达到系统限制
 - `sandbox` 用户余额不足以支撑后续使用
 
@@ -434,7 +440,8 @@ curl -X POST "https://hk.apitoken.ai/api/sandbox/organizations/org-123456/tokens
   -H "X-Sandbox-Secret: gkmBHwR7EXHtzukrEjtf" \
   -d '{
     "remain_amount_usd": 8.5,
-    "expired_time": 1783267200
+    "expired_time": 1783267200,
+    "group": "sandbox-China"
   }'
 ```
 
@@ -653,6 +660,7 @@ curl -X POST "$BASE_URL/api/sandbox/organizations" \
 
 - `remain_amount_usd = 5.0`
 - `expired_time = -1`
+- `group = sandbox`
 
 ```bash
 curl -X POST "$BASE_URL/api/sandbox/organizations/$ORG_ID/tokens" \
@@ -670,6 +678,19 @@ curl -X POST "$BASE_URL/api/sandbox/organizations/$ORG_ID/tokens" \
   -d '{
     "remain_amount_usd": 8.5,
     "expired_time": 1783267200
+  }'
+```
+
+### 3.1 为组织新增 Key，并显式指定分组
+
+```bash
+curl -X POST "$BASE_URL/api/sandbox/organizations/$ORG_ID/tokens" \
+  -H "Content-Type: application/json" \
+  -H "X-Sandbox-Secret: $SECRET" \
+  -d '{
+    "remain_amount_usd": 8.5,
+    "expired_time": 1783267200,
+    "group": "sandbox-China"
   }'
 ```
 

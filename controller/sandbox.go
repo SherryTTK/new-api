@@ -19,10 +19,11 @@ import (
 )
 
 const (
-	sandboxUserName   = "sandbox"
-	sandboxTokenGroup = "sandbox"
-	maxAmountUSD      = 1000000000
-	maxTokenNameLen   = 50
+	sandboxUserName     = "sandbox"
+	defaultSandboxGroup = "sandbox"
+	sandboxChinaGroup   = "sandbox-China"
+	maxAmountUSD        = 1000000000
+	maxTokenNameLen     = 50
 )
 
 type sandboxOrganizationCreateRequest struct {
@@ -32,6 +33,7 @@ type sandboxOrganizationCreateRequest struct {
 type sandboxTokenCreateRequest struct {
 	RemainAmountUSD *float64 `json:"remain_amount_usd"`
 	ExpiredTime     *int64   `json:"expired_time"`
+	Group           *string  `json:"group"`
 }
 
 type sandboxTokenUpdateRequest struct {
@@ -100,7 +102,23 @@ func sandboxTokenName(organizationID string, now time.Time) string {
 	return organizationID[:maxOrgLen] + "-" + timestamp
 }
 
-func getSandboxUser() (*model.User, error) {
+func normalizeSandboxTokenGroup(rawGroup *string) (string, error) {
+	if rawGroup == nil {
+		return defaultSandboxGroup, nil
+	}
+	group := strings.TrimSpace(*rawGroup)
+	if group == "" {
+		return defaultSandboxGroup, nil
+	}
+	switch group {
+	case defaultSandboxGroup, sandboxChinaGroup:
+		return group, nil
+	default:
+		return "", fmt.Errorf("group 仅支持 %s 或 %s", defaultSandboxGroup, sandboxChinaGroup)
+	}
+}
+
+func getSandboxUser(targetGroup string) (*model.User, error) {
 	user, err := model.GetUserByUsername(sandboxUserName, true)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -111,11 +129,11 @@ func getSandboxUser() (*model.User, error) {
 	if user.Status != common.UserStatusEnabled {
 		return nil, errors.New("sandbox 用户已被禁用")
 	}
-	if !service.GroupInUserUsableGroups(user.Group, sandboxTokenGroup) {
-		return nil, fmt.Errorf("sandbox 用户无权使用 %s 分组", sandboxTokenGroup)
+	if !service.GroupInUserUsableGroups(user.Group, targetGroup) {
+		return nil, fmt.Errorf("sandbox 用户无权使用 %s 分组", targetGroup)
 	}
-	if !ratio_setting.ContainsGroupRatio(sandboxTokenGroup) {
-		return nil, fmt.Errorf("分组 %s 不存在", sandboxTokenGroup)
+	if !ratio_setting.ContainsGroupRatio(targetGroup) {
+		return nil, fmt.Errorf("分组 %s 不存在", targetGroup)
 	}
 	return user, nil
 }
@@ -215,6 +233,12 @@ func CreateSandboxToken(c *gin.Context) {
 		return
 	}
 
+	tokenGroup, err := normalizeSandboxTokenGroup(req.Group)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
 	organization, err := model.GetSandboxOrganizationByOrganizationID(organizationID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -225,7 +249,7 @@ func CreateSandboxToken(c *gin.Context) {
 		return
 	}
 
-	sandboxUser, err := getSandboxUser()
+	sandboxUser, err := getSandboxUser(tokenGroup)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -269,7 +293,7 @@ func CreateSandboxToken(c *gin.Context) {
 		ModelLimits:        "",
 		AllowIps:           nil,
 		UsedQuota:          0,
-		Group:              sandboxTokenGroup,
+		Group:              tokenGroup,
 		CrossGroupRetry:    false,
 	}
 	relation := model.SandboxOrgToken{
