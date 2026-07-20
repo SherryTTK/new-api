@@ -17,9 +17,9 @@ func setupLogExportTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
-	common.UsingSQLite = true
-	common.UsingMySQL = false
-	common.UsingPostgreSQL = false
+	originalMainDatabaseType := common.MainDatabaseType()
+	originalLogDatabaseType := common.LogDatabaseType()
+	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	common.RedisEnabled = false
 	common.MemoryCacheEnabled = false
 
@@ -36,6 +36,7 @@ func setupLogExportTestDB(t *testing.T) *gorm.DB {
 	}
 
 	t.Cleanup(func() {
+		common.SetDatabaseTypes(originalMainDatabaseType, originalLogDatabaseType)
 		sqlDB, err := db.DB()
 		if err == nil {
 			_ = sqlDB.Close()
@@ -115,16 +116,16 @@ func TestExportLogSummaryIncludesZeroUsageTokens(t *testing.T) {
 	if !strings.Contains(body, "<th>总调用次数</th>") {
 		t.Fatalf("expected summary header in export body, got %q", body)
 	}
-	if !strings.Contains(body, "<th>令牌总额度</th>") {
+	if !strings.Contains(body, "<th>令牌总额度(USD)</th>") || !strings.Contains(body, "<th>令牌剩余额度(USD)</th>") {
 		t.Fatalf("expected token quota header in export body, got %q", body)
 	}
 	if strings.Contains(body, "<th>总花费金额(CNY)</th>") {
 		t.Fatalf("summary export should not contain CNY column, got %q", body)
 	}
-	if !strings.Contains(body, "<td>alpha-key</td>") || !strings.Contains(body, "<td>无限</td><td>1</td><td>150</td><td>2000</td><td>0.004000</td>") {
+	if !strings.Contains(body, "<td>alpha-key</td>") || !strings.Contains(body, "<td>无限</td><td>无限</td><td>无限</td><td>1</td><td>150</td><td>2000</td><td>0.004000</td>") {
 		t.Fatalf("expected alpha token summary row, got %q", body)
 	}
-	if !strings.Contains(body, "<td>beta-key</td>") || !strings.Contains(body, "<td>无限</td><td>0</td><td>0</td><td>0</td><td>0.000000</td>") {
+	if !strings.Contains(body, "<td>beta-key</td>") || !strings.Contains(body, "<td>无限</td><td>无限</td><td>无限</td><td>0</td><td>0</td><td>0</td><td>0.000000</td>") {
 		t.Fatalf("expected zero-usage token row, got %q", body)
 	}
 }

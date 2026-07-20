@@ -96,10 +96,8 @@ func setupSandboxControllerTest(t *testing.T) {
 	originalRedisEnabled := common.RedisEnabled
 	originalDebugEnabled := common.DebugEnabled
 	originalMasterNode := common.IsMasterNode
-	originalUsingSQLite := common.UsingSQLite
-	originalUsingMySQL := common.UsingMySQL
-	originalUsingPostgreSQL := common.UsingPostgreSQL
-	originalLogSQLType := common.LogSqlType
+	originalMainDatabaseType := common.MainDatabaseType()
+	originalLogDatabaseType := common.LogDatabaseType()
 	originalUserUsableGroups := setting.UserUsableGroups2JSONString()
 	originalGroupRatio := ratio_setting.GroupRatio2JSONString()
 
@@ -125,10 +123,7 @@ func setupSandboxControllerTest(t *testing.T) {
 		common.RedisEnabled = originalRedisEnabled
 		common.DebugEnabled = originalDebugEnabled
 		common.IsMasterNode = originalMasterNode
-		common.UsingSQLite = originalUsingSQLite
-		common.UsingMySQL = originalUsingMySQL
-		common.UsingPostgreSQL = originalUsingPostgreSQL
-		common.LogSqlType = originalLogSQLType
+		common.SetDatabaseTypes(originalMainDatabaseType, originalLogDatabaseType)
 		model.DB = nil
 		model.LOG_DB = nil
 		require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(originalUserUsableGroups))
@@ -147,7 +142,7 @@ func newSandboxTestRouter() *gin.Engine {
 	}
 
 	selfRoute := router.Group("/api/sandbox")
-	selfRoute.Use(middleware.TokenAuthReadOnly())
+	selfRoute.Use(middleware.SandboxTokenAuthReadOnly())
 	{
 		selfRoute.PUT("/token/self", UpdateSandboxTokenSelf)
 		selfRoute.DELETE("/token/self", DeleteSandboxTokenSelf)
