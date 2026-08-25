@@ -15,6 +15,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/service/authz"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/types"
 
@@ -388,6 +389,9 @@ func TokenAuth() func(c *gin.Context) {
 				abortWithOpenAiMessage(c, http.StatusInternalServerError,
 					common.TranslateMessage(c, i18n.MsgDatabaseError))
 			} else {
+				if category := tokenInvalidRelayAlertCategory(token, common.GetTimestamp()); category != "" {
+					service.SubmitTokenAuthRelayAlert(c, token, category)
+				}
 				abortWithOpenAiMessage(c, http.StatusUnauthorized,
 					common.TranslateMessage(c, i18n.MsgTokenInvalid))
 			}
@@ -450,6 +454,26 @@ func TokenAuth() func(c *gin.Context) {
 		}
 		c.Next()
 	}
+}
+
+func tokenInvalidRelayAlertCategory(token *model.Token, now int64) string {
+	if token == nil {
+		return ""
+	}
+	switch token.Status {
+	case common.TokenStatusExpired:
+		return operation_setting.RelayAlertCategoryTokenExpired
+	case common.TokenStatusExhausted:
+		return operation_setting.RelayAlertCategoryTokenExhausted
+	case common.TokenStatusEnabled:
+		if token.ExpiredTime != -1 && token.ExpiredTime < now {
+			return operation_setting.RelayAlertCategoryTokenExpired
+		}
+		if !token.UnlimitedQuota && token.RemainQuota <= 0 {
+			return operation_setting.RelayAlertCategoryTokenExhausted
+		}
+	}
+	return ""
 }
 
 func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) error {

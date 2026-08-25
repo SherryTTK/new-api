@@ -33,6 +33,9 @@ func OaiResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http
 	if oaiError := responsesResponse.GetOpenAIError(); oaiError != nil && oaiError.Type != "" {
 		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode)
 	}
+	if !relaycommon.HasValidRelayOutput(responseBody) {
+		return nil, types.NewOpenAIError(fmt.Errorf("empty response from upstream"), types.ErrorCodeEmptyResponse, http.StatusInternalServerError)
+	}
 
 	if responsesResponse.HasImageGenerationCall() {
 		c.Set("image_generation_call", true)

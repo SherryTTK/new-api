@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -121,6 +122,7 @@ type RelayInfo struct {
 	RelayFormat            types.RelayFormat
 	SendResponseCount      int
 	ReceivedResponseCount  int
+	validOutputCount       atomic.Int64
 	FinalPreConsumedQuota  int // 最终预消耗的配额
 	// ForcePreConsume 为 true 时禁用 BillingSession 的信任额度旁路，
 	// 强制预扣全额。用于异步任务（视频/音乐生成等），因为请求返回后任务仍在运行，
@@ -191,6 +193,24 @@ type RelayInfo struct {
 	*ResponsesUsageInfo
 	*ChannelMeta
 	*TaskRelayInfo
+}
+
+func (info *RelayInfo) ResetValidOutput() {
+	if info == nil {
+		return
+	}
+	info.validOutputCount.Store(0)
+}
+
+func (info *RelayInfo) MarkValidOutput() {
+	if info == nil {
+		return
+	}
+	info.validOutputCount.Add(1)
+}
+
+func (info *RelayInfo) HasValidOutput() bool {
+	return info != nil && info.validOutputCount.Load() > 0
 }
 
 func (info *RelayInfo) InitChannelMeta(c *gin.Context) {

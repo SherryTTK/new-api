@@ -48,6 +48,9 @@ func GeminiResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *h
 			http.StatusInternalServerError,
 		)
 	}
+	if !relaycommon.HasValidRelayOutput(responseBody) {
+		return nil, types.NewOpenAIError(errors.New("empty response from Gemini API"), types.ErrorCodeEmptyResponse, http.StatusInternalServerError)
+	}
 
 	chatResp := responseGeminiChat2OpenAI(c, &geminiResponse)
 	chatResp.Model = info.UpstreamModelName

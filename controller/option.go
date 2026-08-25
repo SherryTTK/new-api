@@ -85,7 +85,8 @@ func GetOptions(c *gin.Context) {
 			strings.HasSuffix(k, "Secret") ||
 			strings.HasSuffix(k, "Key") ||
 			strings.HasSuffix(k, "secret") ||
-			strings.HasSuffix(k, "api_key")
+			strings.HasSuffix(k, "api_key") ||
+			k == "relay_alert_setting.feishu_webhook_url"
 		if isSensitiveKey {
 			continue
 		}
@@ -138,6 +139,9 @@ func UpdateOption(c *gin.Context) {
 		option.Value = fmt.Sprintf("%v", option.Value)
 	}
 	switch option.Key {
+	case "relay_alert_setting.enabled", "relay_alert_setting.aggregation_window_minutes", "relay_alert_setting.rules", "relay_alert_setting.feishu_webhook_url", "relay_alert_setting.feishu_secret":
+		common.ApiErrorMsg(c, "请求异常告警配置请使用专用接口修改")
+		return
 	case "QuotaForInviter", "QuotaForInvitee":
 		if isPositiveOptionValue(option.Value.(string)) && !operation_setting.IsPaymentComplianceConfirmed() {
 			common.ApiErrorI18n(c, i18n.MsgPaymentComplianceRequired)

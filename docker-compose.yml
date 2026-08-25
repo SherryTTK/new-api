@@ -16,7 +16,7 @@ version: '3.4' # For compatibility with older Docker versions
 
 services:
   new-api:
-    image: sherryttk/new-api:Aaron-v0.37 #202604181845 #calciumion/new-api:latest
+    image: sherryttk/new-api:Aaron-v0.4 #202604181845 #calciumion/new-api:latest
     container_name: new-api
     restart: always
     command: --log-dir /app/logs

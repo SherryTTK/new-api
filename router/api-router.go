@@ -188,6 +188,10 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			optionRoute.GET("/", controller.GetOptions)
 			optionRoute.PUT("/", controller.UpdateOption)
+			optionRoute.GET("/request-alert", controller.GetRelayAlertSetting)
+			optionRoute.PUT("/request-alert", controller.UpdateRelayAlertSetting)
+			optionRoute.POST("/request-alert/test", controller.TestRelayAlertSetting)
+			optionRoute.GET("/request-alert/targets", controller.SearchRelayAlertTargets)
 			optionRoute.POST("/payment_compliance", controller.ConfirmPaymentCompliance)
 			optionRoute.GET("/channel_affinity_cache", controller.GetChannelAffinityCacheStats)
 			optionRoute.DELETE("/channel_affinity_cache", controller.ClearChannelAffinityCache)

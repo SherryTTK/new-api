@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -254,6 +255,9 @@ func ClaudeHandler(c *gin.Context, resp *http.Response, info *relaycommon.RelayI
 		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
 	}
 	logger.LogDebug(c, "responseBody: %s", responseBody)
+	if !relaycommon.HasValidRelayOutput(responseBody) {
+		return nil, types.NewError(fmt.Errorf("empty response from upstream"), types.ErrorCodeEmptyResponse)
+	}
 	handleErr := HandleClaudeResponseData(c, info, claudeInfo, resp, responseBody)
 	if handleErr != nil {
 		return nil, handleErr

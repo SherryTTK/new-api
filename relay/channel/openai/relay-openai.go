@@ -220,6 +220,9 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 	if oaiError := simpleResponse.GetOpenAIError(); oaiError != nil && oaiError.Type != "" {
 		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode)
 	}
+	if !relaycommon.HasValidRelayOutput(responseBody) {
+		return nil, types.NewOpenAIError(fmt.Errorf("empty response from upstream"), types.ErrorCodeEmptyResponse, http.StatusInternalServerError)
+	}
 
 	for _, choice := range simpleResponse.Choices {
 		if choice.FinishReason == constant.FinishReasonContentFilter {

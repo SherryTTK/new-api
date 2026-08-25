@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 
 import {
@@ -53,6 +54,7 @@ import { SettingsSection } from '../components/settings-section'
 import { useResetForm } from '../hooks/use-reset-form'
 import { useUpdateOption } from '../hooks/use-update-option'
 import { safeNumberFieldProps } from '../utils/numeric-field'
+import { RequestAlertSettings } from './request-alert-settings'
 
 const numericString = z.string().refine((value) => {
   const trimmed = value.trim()
@@ -315,6 +317,8 @@ export function MonitoringSettingsSection({
           </div>
         </SettingsForm>
       </Form>
+      <Separator />
+      <RequestAlertSettings />
     </SettingsSection>
   )
 }
