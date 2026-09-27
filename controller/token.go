@@ -171,6 +171,10 @@ func AddToken(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if err := token.FixedResponse.Validate(); err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	if len(token.Name) > 50 {
 		common.ApiErrorI18n(c, i18n.MsgTokenNameTooLong)
 		return
@@ -221,6 +225,7 @@ func AddToken(c *gin.Context) {
 		AllowIps:           token.AllowIps,
 		Group:              token.Group,
 		CrossGroupRetry:    token.CrossGroupRetry,
+		FixedResponse:      token.FixedResponse,
 	}
 	err = cleanToken.Insert()
 	if err != nil {
@@ -253,6 +258,10 @@ func UpdateToken(c *gin.Context) {
 	token := model.Token{}
 	err := c.ShouldBindJSON(&token)
 	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if err := token.FixedResponse.Validate(); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -299,6 +308,9 @@ func UpdateToken(c *gin.Context) {
 		cleanToken.AllowIps = token.AllowIps
 		cleanToken.Group = token.Group
 		cleanToken.CrossGroupRetry = token.CrossGroupRetry
+		if token.FixedResponse != nil {
+			cleanToken.FixedResponse = token.FixedResponse
+		}
 	}
 	err = cleanToken.Update()
 	if err != nil {

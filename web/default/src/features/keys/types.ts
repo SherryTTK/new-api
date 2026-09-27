@@ -22,7 +22,15 @@ import { z } from 'zod'
 // API Key Schema & Types
 // ============================================================================
 
+export const fixedResponseSchema = z.object({
+  enabled: z.boolean(),
+  min_delay_ms: z.number().int().min(0).max(300000),
+  max_delay_ms: z.number().int().min(0).max(300000),
+  content: z.string(),
+})
+
 export const apiKeySchema = z.object({
+  fixed_response: fixedResponseSchema.nullish(),
   id: z.number(),
   name: z.string(),
   key: z.string(),
@@ -83,6 +91,7 @@ export interface SearchApiKeysParams {
 }
 
 export interface ApiKeyFormData {
+  fixed_response: z.infer<typeof fixedResponseSchema>
   name: string
   remain_quota: number
   expired_time: number

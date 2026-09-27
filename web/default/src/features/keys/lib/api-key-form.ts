@@ -22,7 +22,7 @@ import { z } from 'zod'
 import { parseQuotaFromDollars, quotaUnitsToDollars } from '@/lib/format'
 
 import { DEFAULT_GROUP } from '../constants'
-import { type ApiKeyFormData, type ApiKey } from '../types'
+import { fixedResponseSchema, type ApiKeyFormData, type ApiKey } from '../types'
 
 // ============================================================================
 // Form Schema
@@ -31,6 +31,7 @@ import { type ApiKeyFormData, type ApiKey } from '../types'
 export function getApiKeyFormSchema(t: TFunction) {
   return z
     .object({
+      fixed_response: fixedResponseSchema,
       name: z.string().min(1, t('Please enter a name')),
       remain_quota_dollars: z.number().optional(),
       expired_time: z.date().optional(),
@@ -42,6 +43,29 @@ export function getApiKeyFormSchema(t: TFunction) {
       tokenCount: z.number().min(1).optional(),
     })
     .superRefine((data, ctx) => {
+      if (data.fixed_response.max_delay_ms < data.fixed_response.min_delay_ms) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fixed_response', 'max_delay_ms'],
+          message: t('Maximum delay must be at least the minimum delay'),
+        })
+      }
+      if (data.fixed_response.enabled && !data.fixed_response.content.trim()) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fixed_response', 'content'],
+          message: t('Please enter fixed response content'),
+        })
+      }
+      if (
+        new TextEncoder().encode(data.fixed_response.content).length > 65536
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fixed_response', 'content'],
+          message: t('Fixed response content must not exceed 64 KiB'),
+        })
+      }
       if (data.unlimited_quota) {
         return
       }
@@ -66,6 +90,12 @@ export type ApiKeyFormValues = z.infer<ReturnType<typeof getApiKeyFormSchema>>
 // ============================================================================
 
 export const API_KEY_FORM_DEFAULT_VALUES: ApiKeyFormValues = {
+  fixed_response: {
+    enabled: false,
+    min_delay_ms: 0,
+    max_delay_ms: 0,
+    content: '',
+  },
   name: '',
   remain_quota_dollars: 10,
   expired_time: undefined,
@@ -98,6 +128,7 @@ export function transformFormDataToPayload(
   data: ApiKeyFormValues
 ): ApiKeyFormData {
   return {
+    fixed_response: data.fixed_response,
     name: data.name,
     remain_quota: data.unlimited_quota
       ? 0
@@ -121,6 +152,9 @@ export function transformApiKeyToFormDefaults(
   apiKey: ApiKey
 ): ApiKeyFormValues {
   return {
+    fixed_response: apiKey.fixed_response ?? {
+      ...API_KEY_FORM_DEFAULT_VALUES.fixed_response,
+    },
     name: apiKey.name,
     remain_quota_dollars: apiKey.unlimited_quota
       ? 0

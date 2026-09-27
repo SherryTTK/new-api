@@ -82,6 +82,9 @@ func isLegacyClaudeDerivedOpenAIUsage(relayInfo *relaycommon.RelayInfo, usage *d
 }
 
 func calculateTextToolCallSurcharge(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, summary *textQuotaSummary) decimal.Decimal {
+	if relayInfo.FixedResponse {
+		return decimal.Zero
+	}
 	dGroupRatio := decimal.NewFromFloat(summary.GroupRatio)
 	dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 
@@ -393,7 +396,9 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 		logger.LogError(ctx, fmt.Sprintf("total tokens is 0, cannot consume quota, userId %d, channelId %d, tokenId %d, model %s， pre-consumed quota %d", relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, summary.ModelName, relayInfo.FinalPreConsumedQuota))
 	} else {
 		model.UpdateUserUsedQuotaAndRequestCount(relayInfo.UserId, summary.Quota)
-		model.UpdateChannelUsedQuota(relayInfo.ChannelId, summary.Quota)
+		if !relayInfo.FixedResponse {
+			model.UpdateChannelUsedQuota(relayInfo.ChannelId, summary.Quota)
+		}
 	}
 
 	if err := SettleBilling(ctx, relayInfo, summary.Quota); err != nil {
@@ -486,6 +491,9 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 		InjectTieredBillingInfo(other, relayInfo, tieredResult)
 	}
 
+	if relayInfo.FixedResponse {
+		other["fixed_response"] = true
+	}
 	attachQuotaSaturation(ctx, relayInfo, other)
 
 	model.RecordConsumeLog(ctx, relayInfo.UserId, model.RecordConsumeLogParams{
@@ -505,4 +513,17 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 	gopool.Go(func() {
 		perfmetrics.RecordRelaySample(relayInfo, true, int64(summary.CompletionTokens))
 	})
+}
+
+// FixedResponseQuota reserves the known local usage using the settlement rules.
+func FixedResponseQuota(ctx *gin.Context, info *relaycommon.RelayInfo, usage *dto.Usage) int {
+	summary := calculateTextQuotaSummary(ctx, info, usage)
+	var usedVars map[string]bool
+	if info.TieredBillingSnapshot != nil {
+		usedVars = billingexpr.UsedVars(info.TieredBillingSnapshot.ExprString)
+	}
+	if ok, quota, result := TryTieredSettle(info, BuildTieredTokenParams(usage, summary.IsClaudeUsageSemantic, usedVars)); ok {
+		return composeTieredTextQuota(info, summary, quota, result)
+	}
+	return summary.Quota
 }

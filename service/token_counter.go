@@ -178,7 +178,7 @@ func getImageToken(c *gin.Context, fileMeta *types.FileMeta, model string, strea
 
 func EstimateRequestToken(c *gin.Context, meta *types.TokenCountMeta, info *relaycommon.RelayInfo) (int, error) {
 	// 是否统计token
-	if !constant.CountToken {
+	if !constant.CountToken && !info.FixedResponse {
 		return 0, nil
 	}
 
@@ -253,6 +253,9 @@ func EstimateRequestToken(c *gin.Context, meta *types.TokenCountMeta, info *rela
 
 	// 使用统一的文件服务获取文件类型
 	for _, file := range meta.Files {
+		if info.FixedResponse {
+			break
+		}
 		if file.Source == nil {
 			continue
 		}
@@ -276,7 +279,7 @@ func EstimateRequestToken(c *gin.Context, meta *types.TokenCountMeta, info *rela
 	for i, file := range meta.Files {
 		switch file.FileType {
 		case types.FileTypeImage:
-			if common.IsOpenAITextModel(model) {
+			if common.IsOpenAITextModel(model) && !info.FixedResponse {
 				token, err := getImageToken(c, file, model, info.IsStream)
 				if err != nil {
 					return 0, fmt.Errorf("error counting image token, media index[%d], identifier[%s], err: %v", i, file.GetIdentifier(), err)

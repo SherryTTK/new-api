@@ -122,6 +122,10 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		newAPIError = types.NewError(err, types.ErrorCodeGenRelayInfoFailed)
 		return
 	}
+	if config, enabled := common.GetContextKeyType[types.FixedResponseConfig](c, types.FixedResponseContextKey); enabled && config.Enabled && types.IsFixedResponsePath(c.Request.URL.Path) {
+		newAPIError = relay.FixedResponseHelper(c, relayInfo, config)
+		return
+	}
 	relaycommon.WrapOutputTrackingWriter(c, relayInfo)
 	defer func() {
 		service.FinalizeRelayAlert(c, relayInfo, newAPIError)

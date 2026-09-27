@@ -482,6 +482,9 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 	}
 	c.Set("id", token.UserId)
 	c.Set("token_id", token.Id)
+	if token.FixedResponse != nil && token.FixedResponse.Enabled {
+		c.Set(types.FixedResponseContextKey, *token.FixedResponse)
+	}
 	c.Set("token_key", token.Key)
 	c.Set("token_name", token.Name)
 	c.Set("token_unlimited_quota", token.UnlimitedQuota)

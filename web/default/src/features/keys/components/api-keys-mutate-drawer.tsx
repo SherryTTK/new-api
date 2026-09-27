@@ -248,6 +248,7 @@ export function ApiKeysMutateDrawer({
     ? t('Enter quota in tokens')
     : t('Enter quota in {{currency}}', { currency: currencyLabel })
   const selectedGroup = form.watch('group')
+  const fixedResponseEnabled = form.watch('fixed_response.enabled')
   const unlimitedQuota = form.watch('unlimited_quota')
 
   return (
@@ -344,6 +345,98 @@ export function ApiKeysMutateDrawer({
                     </FormItem>
                   )}
                 />
+              )}
+
+              <FormField
+                control={form.control}
+                name='fixed_response.enabled'
+                render={({ field }) => (
+                  <FormItem className={sideDrawerSwitchItemClassName()}>
+                    <div className='flex flex-col gap-0.5'>
+                      <FormLabel>{t('Fixed response')}</FormLabel>
+                      <FormDescription>
+                        {t(
+                          'Reply locally to text generation requests. Input and output tokens are billed at the requested model rates. Tools are not executed.'
+                        )}
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {fixedResponseEnabled && (
+                <>
+                  <div className='grid gap-4 sm:grid-cols-2'>
+                    <FormField
+                      control={form.control}
+                      name='fixed_response.min_delay_ms'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Minimum delay (ms)')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type='number'
+                              min={0}
+                              max={300000}
+                              step={1}
+                              onChange={(event) =>
+                                field.onChange(event.target.valueAsNumber)
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name='fixed_response.max_delay_ms'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Maximum delay (ms)')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type='number'
+                              min={0}
+                              max={300000}
+                              step={1}
+                              onChange={(event) =>
+                                field.onChange(event.target.valueAsNumber)
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name='fixed_response.content'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Fixed response content')}</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} rows={5} />
+                        </FormControl>
+                        <FormDescription>
+                          {t(
+                            'After a random delay, the full reply is sent in the requested format. Maximum delay: 300 seconds.'
+                          )}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
               )}
 
               <FormField

@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -124,6 +125,15 @@ func RedisHSetObj(key string, obj interface{}, expiration time.Duration) error {
 			continue
 		}
 
+		// Keep GORM JSON fields consistent between database and hash cache.
+		if strings.Contains(field.Tag.Get("gorm"), "serializer:json") {
+			encoded, err := Marshal(value.Interface())
+			if err != nil {
+				return fmt.Errorf("failed to encode field %s: %w", field.Name, err)
+			}
+			data[field.Name] = string(encoded)
+			continue
+		}
 		// 处理指针类型
 		if value.Kind() == reflect.Ptr {
 			if value.IsNil() {
@@ -191,6 +201,14 @@ func RedisHGetObj(key string, obj interface{}) error {
 		if value, ok := result[fieldName]; ok {
 			fieldValue := v.Field(i)
 
+			if strings.Contains(field.Tag.Get("gorm"), "serializer:json") {
+				if value != "" {
+					if err := UnmarshalJsonStr(value, fieldValue.Addr().Interface()); err != nil {
+						return fmt.Errorf("failed to decode field %s: %w", fieldName, err)
+					}
+				}
+				continue
+			}
 			// Handle pointer types
 			if fieldValue.Kind() == reflect.Ptr {
 				if value == "" {
