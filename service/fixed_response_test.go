@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/types"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -59,7 +59,7 @@ func TestFixedResponseQuotaPricing(t *testing.T) {
 			}
 			// Merely naming a search model must not charge for an unexecuted tool.
 			summary := calculateTextQuotaSummary(c, info, usage)
-			assert.Zero(t, summary.WebSearchCallCount)
+			assert.Empty(t, summary.ToolSurchargeItems)
 		})
 	}
 }

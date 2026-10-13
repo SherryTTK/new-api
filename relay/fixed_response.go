@@ -9,20 +9,22 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/relay/helper"
+	"github.com/QuantumNous/new-api/relaykit/dto"
+	"github.com/QuantumNous/new-api/relaykit/relayconvert"
+	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/service/relayconvert"
 	"github.com/QuantumNous/new-api/setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/QuantumNous/new-api/tokenkit"
+	hosttypes "github.com/QuantumNous/new-api/types"
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 )
 
-func FixedResponseHelper(c *gin.Context, info *relaycommon.RelayInfo, config types.FixedResponseConfig) *types.NewAPIError {
+func FixedResponseHelper(c *gin.Context, info *relaycommon.RelayInfo, config hosttypes.FixedResponseConfig) *types.NewAPIError {
 	if err := config.Validate(); err != nil {
 		return types.NewError(err, types.ErrorCodeInvalidRequest)
 	}
@@ -39,7 +41,7 @@ func FixedResponseHelper(c *gin.Context, info *relaycommon.RelayInfo, config typ
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeCountTokenFailed)
 	}
-	outputTokens := service.CountTextToken(config.Content, info.OriginModelName)
+	outputTokens := tokenkit.Count(info.OriginModelName, config.Content)
 	// OpenAI usage includes cache categories in the input total. The configured
 	// counts are additional synthetic usage, leaving locally counted input intact.
 	inputTokens := promptTokens + config.CacheReadTokens + config.CacheWriteTokens
@@ -99,7 +101,7 @@ func FixedResponseHelper(c *gin.Context, info *relaycommon.RelayInfo, config typ
 	if info.IsStream {
 		c.Writer.Flush()
 	}
-	service.PostTextConsumeQuota(c, info, usage, []string{"固定回复（本地 Token 统计）"})
+	service.PostTextConsumeQuota(c, info, usage, []*common.Message{common.NewMessage("Fixed response (local token count)")})
 	settled = true
 	return nil
 }
@@ -118,7 +120,7 @@ func fixedResponsePayload(c *gin.Context, info *relaycommon.RelayInfo, content s
 		if legacy {
 			value = gin.H{"id": id, "object": "text_completion", "created": created, "model": info.OriginModelName, "choices": []gin.H{{"index": 0, "text": content, "finish_reason": "stop", "logprobs": nil}}, "usage": usage}
 		} else {
-			result, err := relayconvert.ConvertResponse(c, info, info.RelayFormat, response)
+			result, err := service.ConvertResponse(c, info, info.RelayFormat, response)
 			if err != nil {
 				return nil, "", err
 			}
@@ -129,7 +131,7 @@ func fixedResponsePayload(c *gin.Context, info *relaycommon.RelayInfo, content s
 	}
 	// Gemini also supports a streamed JSON array when alt=sse is absent.
 	if info.RelayFormat == types.RelayFormatGemini {
-		result, err := relayconvert.ConvertResponse(c, info, info.RelayFormat, response)
+		result, err := service.ConvertResponse(c, info, info.RelayFormat, response)
 		if err != nil {
 			return nil, "", err
 		}
@@ -164,7 +166,7 @@ func fixedResponsePayload(c *gin.Context, info *relaycommon.RelayInfo, content s
 			}
 			continue
 		}
-		results, err := relayconvert.ConvertStreamResponseChunk(c, info, state, chunk)
+		results, err := service.ConvertStreamResponseChunk(c, info, state, chunk)
 		if err != nil {
 			return nil, "", err
 		}
@@ -172,7 +174,7 @@ func fixedResponsePayload(c *gin.Context, info *relaycommon.RelayInfo, content s
 			values = append(values, result.Value)
 		}
 	}
-	results, err := relayconvert.FinalizeStreamResponse(c, info, state)
+	results, err := service.FinalizeStreamResponse(c, info, state)
 	if err != nil {
 		return nil, "", err
 	}

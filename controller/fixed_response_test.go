@@ -15,9 +15,10 @@ import (
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/QuantumNous/new-api/tokenkit"
+	hosttypes "github.com/QuantumNous/new-api/types"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +28,6 @@ import (
 )
 
 func TestFixedResponseRelayBilling(t *testing.T) {
-	service.InitTokenEncoders()
 	require.NoError(t, i18n.Init())
 	previous, err := common.Marshal(ratio_setting.GetModelRatioCopy())
 	require.NoError(t, err)
@@ -79,7 +79,7 @@ func TestFixedResponseRelayBilling(t *testing.T) {
 			require.NoError(t, db.AutoMigrate(&model.User{}, &model.Token{}, &model.Log{}, &model.TokenLastRequest{}))
 			user := model.User{Username: "fixed_user", Quota: tc.quota, Status: common.UserStatusEnabled, Group: "default", Setting: `{"billing_preference":"wallet_only"}`}
 			require.NoError(t, db.Create(&user).Error)
-			config := &types.FixedResponseConfig{Enabled: true, Content: strings.Repeat("固定回复 ", 20), CacheReadTokens: tc.cacheRead, CacheWriteTokens: tc.cacheWrite}
+			config := &hosttypes.FixedResponseConfig{Enabled: true, Content: strings.Repeat("固定回复 ", 20), CacheReadTokens: tc.cacheRead, CacheWriteTokens: tc.cacheWrite}
 			if tc.cancel {
 				config.MinDelayMS = 300000
 				config.MaxDelayMS = 300000
@@ -162,7 +162,7 @@ func TestFixedResponseRelayBilling(t *testing.T) {
 			require.Len(t, logs, 1)
 			log := logs[0]
 			assert.Positive(t, log.PromptTokens, "local counting must work when global estimation is disabled")
-			assert.Equal(t, service.CountTextToken(config.Content, "gpt-4o-mini"), log.CompletionTokens)
+			assert.Equal(t, tokenkit.Count("gpt-4o-mini", config.Content), log.CompletionTokens)
 			ratio, ok, _ := ratio_setting.GetModelRatio("gpt-4o-mini")
 			require.True(t, ok)
 			cacheRatio, _ := ratio_setting.GetCacheRatio("gpt-4o-mini")
