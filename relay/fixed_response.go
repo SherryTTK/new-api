@@ -40,7 +40,15 @@ func FixedResponseHelper(c *gin.Context, info *relaycommon.RelayInfo, config typ
 		return types.NewError(err, types.ErrorCodeCountTokenFailed)
 	}
 	outputTokens := service.CountTextToken(config.Content, info.OriginModelName)
-	usage := &dto.Usage{PromptTokens: promptTokens, CompletionTokens: outputTokens, TotalTokens: promptTokens + outputTokens}
+	// OpenAI usage includes cache categories in the input total. The configured
+	// counts are additional synthetic usage, leaving locally counted input intact.
+	inputTokens := promptTokens + config.CacheReadTokens + config.CacheWriteTokens
+	usage := &dto.Usage{
+		PromptTokens: inputTokens, CompletionTokens: outputTokens, TotalTokens: inputTokens + outputTokens,
+		InputTokens: inputTokens, OutputTokens: outputTokens,
+		UsageSemantic:       dto.BillingUsageSemanticOpenAI,
+		PromptTokensDetails: dto.InputTokenDetails{CachedTokens: config.CacheReadTokens, CacheWriteTokens: config.CacheWriteTokens},
+	}
 	info.SetEstimatePromptTokens(promptTokens)
 	common.SetContextKey(c, constant.ContextKeyLocalCountTokens, true)
 	// The entire output is known. Reserve its actual cost, irrespective of client max_tokens.

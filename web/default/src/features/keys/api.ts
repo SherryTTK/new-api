@@ -20,6 +20,7 @@ import { api } from '@/lib/api'
 
 import type {
   ApiKey,
+  TokenLastRequest,
   ApiResponse,
   GetApiKeysParams,
   GetApiKeysResponse,
@@ -115,4 +116,14 @@ export async function fetchTokenKeysBatch(ids: number[]): Promise<{
 }> {
   const res = await api.post('/api/token/batch/keys', { ids })
   return res.data
+}
+
+export async function getTokenLastRequest(
+  id: number
+): Promise<TokenLastRequest | null> {
+  const response = await api.get<ApiResponse<TokenLastRequest | null>>(
+    `/api/token/${id}/last-request`
+  )
+  if (!response.data.success) throw new Error(response.data.message)
+  return response.data.data ?? null
 }

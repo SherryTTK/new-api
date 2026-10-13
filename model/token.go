@@ -13,7 +13,8 @@ import (
 )
 
 type Token struct {
-	FixedResponse      *types.FixedResponseConfig `json:"fixed_response" gorm:"serializer:json;type:text"`
+	RecordLastRequest  *bool                      `json:"record_last_request,omitempty"`
+	FixedResponse      *types.FixedResponseConfig `json:"fixed_response,omitempty" gorm:"serializer:json;type:text"`
 	Id                 int                        `json:"id"`
 	UserId             int                        `json:"user_id" gorm:"index"`
 	Key                string                     `json:"key" gorm:"type:varchar(128);uniqueIndex"`
@@ -304,7 +305,7 @@ func (token *Token) Update() (err error) {
 		}
 	}()
 	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
-		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "fixed_response").Updates(token).Error
+		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "fixed_response", "record_last_request").Updates(token).Error
 	return err
 }
 

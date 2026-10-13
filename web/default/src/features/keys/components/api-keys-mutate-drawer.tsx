@@ -65,7 +65,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { useStatus } from '@/hooks/use-status'
 import { getUserModels, getUserGroups } from '@/lib/api'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
+import { ROLE } from '@/lib/roles'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { createApiKey, updateApiKey, getApiKey } from '../api'
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
@@ -82,6 +84,7 @@ import {
   type ApiKeyGroupOption,
 } from './api-key-group-combobox'
 import { useApiKeys } from './api-keys-provider'
+import { TokenLastRequestPanel } from './token-last-request-panel'
 
 type ApiKeyMutateDrawerProps = {
   open: boolean
@@ -95,6 +98,9 @@ export function ApiKeysMutateDrawer({
   currentRow,
 }: ApiKeyMutateDrawerProps) {
   const { t } = useTranslation()
+  const isSuperAdmin = useAuthStore(
+    (state) => state.auth.user?.role === ROLE.SUPER_ADMIN
+  )
   const isUpdate = !!currentRow
   const { triggerRefresh } = useApiKeys()
   const { status } = useStatus()
@@ -171,6 +177,10 @@ export function ApiKeysMutateDrawer({
     setIsSubmitting(true)
     try {
       const basePayload = transformFormDataToPayload(data)
+      if (!isSuperAdmin) {
+        delete basePayload.fixed_response
+        delete basePayload.record_last_request
+      }
 
       if (isUpdate && currentRow) {
         const result = await updateApiKey({
@@ -347,98 +357,190 @@ export function ApiKeysMutateDrawer({
                 />
               )}
 
-              <FormField
-                control={form.control}
-                name='fixed_response.enabled'
-                render={({ field }) => (
-                  <FormItem className={sideDrawerSwitchItemClassName()}>
-                    <div className='flex flex-col gap-0.5'>
-                      <FormLabel>{t('Fixed response')}</FormLabel>
-                      <FormDescription>
-                        {t(
-                          'Reply locally to text generation requests. Input and output tokens are billed at the requested model rates. Tools are not executed.'
-                        )}
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {fixedResponseEnabled && (
+              {isSuperAdmin && (
                 <>
-                  <div className='grid gap-4 sm:grid-cols-2'>
-                    <FormField
-                      control={form.control}
-                      name='fixed_response.min_delay_ms'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('Minimum delay (ms)')}</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              type='number'
-                              min={0}
-                              max={300000}
-                              step={1}
-                              onChange={(event) =>
-                                field.onChange(event.target.valueAsNumber)
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name='fixed_response.max_delay_ms'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('Maximum delay (ms)')}</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              type='number'
-                              min={0}
-                              max={300000}
-                              step={1}
-                              onChange={(event) =>
-                                field.onChange(event.target.valueAsNumber)
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
                   <FormField
                     control={form.control}
-                    name='fixed_response.content'
+                    name='record_last_request'
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('Fixed response content')}</FormLabel>
+                      <FormItem className={sideDrawerSwitchItemClassName()}>
+                        <div className='flex flex-col gap-0.5'>
+                          <FormLabel>
+                            {t('Record latest question and answer')}
+                          </FormLabel>
+                          <FormDescription>
+                            {t(
+                              'Keep only the latest text request for this key. Save the key settings to apply this switch.'
+                            )}
+                          </FormDescription>
+                        </div>
                         <FormControl>
-                          <Textarea {...field} rows={5} />
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
                         </FormControl>
-                        <FormDescription>
-                          {t(
-                            'After a random delay, the full reply is sent in the requested format. Maximum delay: 300 seconds.'
-                          )}
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  {currentRow && (
+                    <TokenLastRequestPanel
+                      tokenId={currentRow.id}
+                      open={open}
+                    />
+                  )}
+
+                  <FormField
+                    control={form.control}
+                    name='fixed_response.enabled'
+                    render={({ field }) => (
+                      <FormItem className={sideDrawerSwitchItemClassName()}>
+                        <div className='flex flex-col gap-0.5'>
+                          <FormLabel>{t('Fixed response')}</FormLabel>
+                          <FormDescription>
+                            {t(
+                              'Reply locally to text generation requests. Input and output tokens are billed at the requested model rates. Tools are not executed.'
+                            )}
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {fixedResponseEnabled && (
+                    <>
+                      <div className='grid gap-4 sm:grid-cols-2'>
+                        <FormField
+                          control={form.control}
+                          name='fixed_response.min_delay_ms'
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t('Minimum delay (ms)')}</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  type='number'
+                                  min={0}
+                                  max={300000}
+                                  step={1}
+                                  onChange={(event) =>
+                                    field.onChange(event.target.valueAsNumber)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name='fixed_response.max_delay_ms'
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t('Maximum delay (ms)')}</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  type='number'
+                                  min={0}
+                                  max={300000}
+                                  step={1}
+                                  onChange={(event) =>
+                                    field.onChange(event.target.valueAsNumber)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className='grid gap-4 sm:grid-cols-2'>
+                        <FormField
+                          control={form.control}
+                          name='fixed_response.cache_write_tokens'
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                {t('Fixed cache write tokens')}
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? 0}
+                                  type='number'
+                                  min={0}
+                                  max={1000000}
+                                  step={1}
+                                  onChange={(event) =>
+                                    field.onChange(event.target.valueAsNumber)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name='fixed_response.cache_read_tokens'
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>
+                                {t('Fixed cache read tokens')}
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value ?? 0}
+                                  type='number'
+                                  min={0}
+                                  max={1000000}
+                                  step={1}
+                                  onChange={(event) =>
+                                    field.onChange(event.target.valueAsNumber)
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <p className='text-muted-foreground text-sm'>
+                        {t(
+                          'Cache tokens are added to actual input usage and billed at model rates. Set 0 to disable; maximum 1,000,000 each.'
+                        )}
+                      </p>
+                      <FormField
+                        control={form.control}
+                        name='fixed_response.content'
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('Fixed response content')}</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} rows={5} />
+                            </FormControl>
+                            <FormDescription>
+                              {t(
+                                'After a random delay, the full reply is sent in the requested format. Maximum delay: 300 seconds.'
+                              )}
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
                 </>
               )}
-
               <FormField
                 control={form.control}
                 name='expired_time'

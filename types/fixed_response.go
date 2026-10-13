@@ -8,19 +8,25 @@ import (
 
 const MaxFixedResponseBytes = 64 * 1024
 const MaxFixedResponseDelayMS = 300000
+const MaxFixedResponseCacheTokens = 1000000
 const FixedResponseContextKey = "token_fixed_response"
 
 // FixedResponseConfig replaces text generation with a locally billed reply.
 type FixedResponseConfig struct {
-	Enabled    bool   `json:"enabled"`
-	MinDelayMS int    `json:"min_delay_ms"`
-	MaxDelayMS int    `json:"max_delay_ms"`
-	Content    string `json:"content"`
+	Enabled          bool   `json:"enabled"`
+	MinDelayMS       int    `json:"min_delay_ms"`
+	MaxDelayMS       int    `json:"max_delay_ms"`
+	Content          string `json:"content"`
+	CacheReadTokens  int    `json:"cache_read_tokens"`
+	CacheWriteTokens int    `json:"cache_write_tokens"`
 }
 
 func (f *FixedResponseConfig) Validate() error {
 	if f == nil {
 		return nil
+	}
+	if f.CacheReadTokens < 0 || f.CacheReadTokens > MaxFixedResponseCacheTokens || f.CacheWriteTokens < 0 || f.CacheWriteTokens > MaxFixedResponseCacheTokens {
+		return fmt.Errorf("fixed response cache tokens must be between 0 and %d", MaxFixedResponseCacheTokens)
 	}
 	if f.MinDelayMS < 0 || f.MaxDelayMS < f.MinDelayMS || f.MaxDelayMS > MaxFixedResponseDelayMS {
 		return fmt.Errorf("fixed response delay must satisfy 0 <= min <= max <= %d ms", MaxFixedResponseDelayMS)

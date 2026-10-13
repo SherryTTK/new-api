@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"fmt"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -113,4 +114,54 @@ func TestFixedResponseStreamUsageOptOut(t *testing.T) {
 	require.NoError(t, common.Unmarshal(payload, &responses))
 	require.Len(t, responses, 1)
 	assert.Equal(t, 4, responses[0].UsageMetadata.TotalTokenCount)
+}
+
+func TestFixedResponseCacheUsageProtocols(t *testing.T) {
+	for _, writeTokens := range []int{0, 200} {
+		for _, format := range []types.RelayFormat{types.RelayFormatOpenAI, types.RelayFormatOpenAIResponses, types.RelayFormatClaude, types.RelayFormatGemini} {
+			for _, stream := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/write=%d/stream=%t", format, writeTokens, stream), func(t *testing.T) {
+					usage := &dto.Usage{PromptTokens: 117 + writeTokens, CompletionTokens: 9, TotalTokens: 126 + writeTokens, UsageSemantic: dto.BillingUsageSemanticOpenAI, PromptTokensDetails: dto.InputTokenDetails{CachedTokens: 100, CacheWriteTokens: writeTokens}}
+					c, _ := gin.CreateTestContext(httptest.NewRecorder())
+					c.Request = httptest.NewRequest("POST", "/?alt=sse", nil)
+					info := &relaycommon.RelayInfo{RelayFormat: format, IsStream: stream, OriginModelName: "test-model", Request: &dto.GeneralOpenAIRequest{StreamOptions: &dto.StreamOptions{IncludeUsage: true}}}
+					info.SetEstimatePromptTokens(17)
+					data, _, err := fixedResponsePayload(c, info, "hello", usage)
+					require.NoError(t, err)
+					result := gjson.ParseBytes(data)
+					if stream {
+						for _, line := range strings.Split(string(data), "\n") {
+							if !strings.HasPrefix(line, "data: ") || line == "data: [DONE]" {
+								continue
+							}
+							event := gjson.Parse(strings.TrimPrefix(line, "data: "))
+							if format == types.RelayFormatClaude && event.Get("type").String() != "message_delta" {
+								continue
+							}
+							result = event
+						}
+					}
+					switch format {
+					case types.RelayFormatOpenAI:
+						assert.EqualValues(t, 100, result.Get("usage.prompt_tokens_details.cached_tokens").Int())
+						assert.EqualValues(t, writeTokens, result.Get("usage.prompt_tokens_details.cache_write_tokens").Int())
+						assert.EqualValues(t, 117+writeTokens, result.Get("usage.prompt_tokens").Int())
+					case types.RelayFormatOpenAIResponses:
+						if stream {
+							result = result.Get("response")
+						}
+						assert.EqualValues(t, 100, result.Get("usage.input_tokens_details.cached_tokens").Int())
+						assert.EqualValues(t, writeTokens, result.Get("usage.input_tokens_details.cache_write_tokens").Int())
+					case types.RelayFormatClaude:
+						assert.EqualValues(t, 100, result.Get("usage.cache_read_input_tokens").Int())
+						assert.EqualValues(t, writeTokens, result.Get("usage.cache_creation_input_tokens").Int())
+						assert.EqualValues(t, 17, result.Get("usage.input_tokens").Int())
+					case types.RelayFormatGemini:
+						assert.EqualValues(t, 100, result.Get("usageMetadata.cachedContentTokenCount").Int())
+						assert.EqualValues(t, 117+writeTokens, result.Get("usageMetadata.promptTokenCount").Int())
+					}
+				})
+			}
+		}
+	}
 }

@@ -1,5 +1,7 @@
 # 按令牌固定回复
 
+仅超级管理员可以查看、配置此功能，普通用户和管理员不可通过页面或 API 读取或修改配置。
+
 在默认主题的「API 密钥」新增或编辑表单中开启「固定回复」，设置最短/最长等待时间（毫秒）及回复内容。配置属于当前令牌，不需要重新填写密钥。
 
 开启后，支持的文本生成请求通过正常鉴权、模型权限、请求校验与限流后，在本地生成响应，不选择渠道、不请求上游、不执行工具。配置关闭后恢复正常转发。非文本生成接口保持原有行为。
@@ -19,6 +21,8 @@ Embeddings、Rerank、Moderation、Responses Compact、Realtime、图像、音�
 
 ## 计费与限制
 
+- 可配置固定缓存读取和写入 Token 数，分别为 0–1,000,000 的整数，默认 0。缓存用量在实际输入统计基础上额外增加，并参与模型缓存倍率/表达式计费及预扣；消费日志记录 `cache_tokens`、`cache_creation_tokens` 和 `cache_write_tokens`。
+- OpenAI/Responses 的输入总数包含这些缓存用量，Claude 的 `input_tokens` 不包含缓存，缓存数通过独立字段返回。Gemini 原生 usage 只支持缓存读取字段，写入数保留在系统计费和日志中。
 - 输入按实际请求内容进行本地 Token 统计，输出按固定文本统计；即使全局预估 Token 开关关闭，也会统计。
 - OpenAI 文本模型使用现有 tokenizer，其他模型使用现有估算规则。多模态附件使用本地保守估算，不下载远程媒体；结果不等同于供应商实际 usage。
 - 复用模型价格、分组倍率、按次计费和表达式计费规则，并沿用钱包/订阅计费偏好。固定回复不会收取未执行工具的调用费用。
@@ -40,7 +44,9 @@ Embeddings、Rerank、Moderation、Responses Compact、Realtime、图像、音�
     "enabled": true,
     "min_delay_ms": 1000,
     "max_delay_ms": 3000,
-    "content": "这是固定回复。"
+    "content": "这是固定回复。",
+    "cache_read_tokens": 1000,
+    "cache_write_tokens": 2000
   }
 }
 ```

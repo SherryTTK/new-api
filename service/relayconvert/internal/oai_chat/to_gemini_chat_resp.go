@@ -16,10 +16,11 @@ func ResponseOpenAI2Gemini(openAIResponse *dto.OpenAITextResponse, info *relayco
 		Candidates:       make([]dto.GeminiChatCandidate, 0, len(openAIResponse.Choices)),
 		HasUsageMetadata: true,
 		UsageMetadata: dto.GeminiUsageMetadata{
-			PromptTokenCount:     openAIResponse.PromptTokens,
-			CandidatesTokenCount: openAIResponse.CompletionTokens,
-			TotalTokenCount:      totalTokens,
-			BillingUsage:         openAIBillingUsageFromUsage(&openAIResponse.Usage),
+			PromptTokenCount:        openAIResponse.PromptTokens,
+			CachedContentTokenCount: openAIResponse.Usage.PromptTokensDetails.CachedTokens,
+			CandidatesTokenCount:    openAIResponse.CompletionTokens,
+			TotalTokenCount:         totalTokens,
+			BillingUsage:            openAIBillingUsageFromUsage(&openAIResponse.Usage),
 		},
 	}
 	if metadata, ok := geminiBillingMetadataFromOpenAIUsage(&openAIResponse.Usage); ok {

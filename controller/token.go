@@ -14,19 +14,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func buildMaskedTokenResponse(token *model.Token) *model.Token {
+func buildMaskedTokenResponse(token *model.Token, canConfigure bool) *model.Token {
 	if token == nil {
 		return nil
 	}
 	maskedToken := *token
 	maskedToken.Key = token.GetMaskedKey()
+	if !canConfigure {
+		maskedToken.FixedResponse = nil
+		maskedToken.RecordLastRequest = nil
+	}
 	return &maskedToken
 }
 
-func buildMaskedTokenResponses(tokens []*model.Token) []*model.Token {
+func buildMaskedTokenResponses(tokens []*model.Token, canConfigure bool) []*model.Token {
 	maskedTokens := make([]*model.Token, 0, len(tokens))
 	for _, token := range tokens {
-		maskedTokens = append(maskedTokens, buildMaskedTokenResponse(token))
+		maskedTokens = append(maskedTokens, buildMaskedTokenResponse(token, canConfigure))
 	}
 	return maskedTokens
 }
@@ -41,7 +45,7 @@ func GetAllTokens(c *gin.Context) {
 	}
 	total, _ := model.CountUserTokens(userId)
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(buildMaskedTokenResponses(tokens))
+	pageInfo.SetItems(buildMaskedTokenResponses(tokens, c.GetInt("role") == common.RoleRootUser))
 	common.ApiSuccess(c, pageInfo)
 }
 
@@ -58,7 +62,7 @@ func SearchTokens(c *gin.Context) {
 		return
 	}
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(buildMaskedTokenResponses(tokens))
+	pageInfo.SetItems(buildMaskedTokenResponses(tokens, c.GetInt("role") == common.RoleRootUser))
 	common.ApiSuccess(c, pageInfo)
 }
 
@@ -74,7 +78,7 @@ func GetToken(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	common.ApiSuccess(c, buildMaskedTokenResponse(token))
+	common.ApiSuccess(c, buildMaskedTokenResponse(token, c.GetInt("role") == common.RoleRootUser))
 }
 
 func GetTokenKey(c *gin.Context) {
@@ -171,6 +175,10 @@ func AddToken(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if c.GetInt("role") != common.RoleRootUser && (token.FixedResponse != nil || token.RecordLastRequest != nil) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": common.TranslateMessage(c, i18n.MsgAuthInsufficientPrivilege)})
+		return
+	}
 	if err := token.FixedResponse.Validate(); err != nil {
 		common.ApiError(c, err)
 		return
@@ -226,6 +234,7 @@ func AddToken(c *gin.Context) {
 		Group:              token.Group,
 		CrossGroupRetry:    token.CrossGroupRetry,
 		FixedResponse:      token.FixedResponse,
+		RecordLastRequest:  token.RecordLastRequest,
 	}
 	err = cleanToken.Insert()
 	if err != nil {
@@ -259,6 +268,10 @@ func UpdateToken(c *gin.Context) {
 	err := c.ShouldBindJSON(&token)
 	if err != nil {
 		common.ApiError(c, err)
+		return
+	}
+	if c.GetInt("role") != common.RoleRootUser && (token.FixedResponse != nil || token.RecordLastRequest != nil) {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": common.TranslateMessage(c, i18n.MsgAuthInsufficientPrivilege)})
 		return
 	}
 	if err := token.FixedResponse.Validate(); err != nil {
@@ -308,6 +321,9 @@ func UpdateToken(c *gin.Context) {
 		cleanToken.AllowIps = token.AllowIps
 		cleanToken.Group = token.Group
 		cleanToken.CrossGroupRetry = token.CrossGroupRetry
+		if token.RecordLastRequest != nil {
+			cleanToken.RecordLastRequest = token.RecordLastRequest
+		}
 		if token.FixedResponse != nil {
 			cleanToken.FixedResponse = token.FixedResponse
 		}
@@ -320,7 +336,7 @@ func UpdateToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    buildMaskedTokenResponse(cleanToken),
+		"data":    buildMaskedTokenResponse(cleanToken, c.GetInt("role") == common.RoleRootUser),
 	})
 }
 
@@ -368,4 +384,28 @@ func GetTokenKeysBatch(c *gin.Context) {
 		keysMap[t.Id] = t.GetFullKey()
 	}
 	common.ApiSuccess(c, gin.H{"keys": keysMap})
+}
+
+func GetTokenLastRequest(c *gin.Context) {
+	if c.GetInt("role") != common.RoleRootUser {
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "message": common.TranslateMessage(c, i18n.MsgAuthInsufficientPrivilege)})
+		return
+	}
+
+	tokenId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	userId := c.GetInt("id")
+	if _, err = model.GetTokenByIds(tokenId, userId); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	record, err := model.GetTokenLastRequest(tokenId, userId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, record)
 }

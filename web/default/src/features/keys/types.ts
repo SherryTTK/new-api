@@ -27,10 +27,13 @@ export const fixedResponseSchema = z.object({
   min_delay_ms: z.number().int().min(0).max(300000),
   max_delay_ms: z.number().int().min(0).max(300000),
   content: z.string(),
+  cache_read_tokens: z.number().int().min(0).max(1000000).optional(),
+  cache_write_tokens: z.number().int().min(0).max(1000000).optional(),
 })
 
 export const apiKeySchema = z.object({
   fixed_response: fixedResponseSchema.nullish(),
+  record_last_request: z.boolean().nullish(),
   id: z.number(),
   name: z.string(),
   key: z.string(),
@@ -91,7 +94,8 @@ export interface SearchApiKeysParams {
 }
 
 export interface ApiKeyFormData {
-  fixed_response: z.infer<typeof fixedResponseSchema>
+  record_last_request?: boolean
+  fixed_response?: z.infer<typeof fixedResponseSchema>
   name: string
   remain_quota: number
   expired_time: number
@@ -113,3 +117,16 @@ export type ApiKeysDialogType =
   | 'delete'
   | 'batch-delete'
   | 'cc-switch'
+
+export interface TokenLastRequest {
+  token_id: number
+  request_id: string
+  created_at: number
+  completed_at: number
+  model: string
+  question: string
+  answer: string
+  status: 'pending' | 'completed' | 'failed' | 'cancelled'
+  is_stream: boolean
+  truncated: boolean
+}

@@ -13,6 +13,11 @@ func TestFixedResponseValidation(t *testing.T) {
 		valid  bool
 	}{
 		{"absent", nil, true},
+		{"cache upper bounds", &FixedResponseConfig{CacheReadTokens: 1000000, CacheWriteTokens: 1000000}, true},
+		{"negative cache read", &FixedResponseConfig{CacheReadTokens: -1}, false},
+		{"negative cache write", &FixedResponseConfig{CacheWriteTokens: -1}, false},
+		{"excessive cache read", &FixedResponseConfig{CacheReadTokens: 1000001}, false},
+		{"excessive cache write", &FixedResponseConfig{CacheWriteTokens: 1000001}, false},
 		{"disabled", &FixedResponseConfig{}, true},
 		{"enabled", &FixedResponseConfig{Enabled: true, Content: "你好", MinDelayMS: 10, MaxDelayMS: 30}, true},
 		{"blank", &FixedResponseConfig{Enabled: true, Content: " \n"}, false},

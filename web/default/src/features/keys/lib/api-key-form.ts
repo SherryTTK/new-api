@@ -32,6 +32,7 @@ export function getApiKeyFormSchema(t: TFunction) {
   return z
     .object({
       fixed_response: fixedResponseSchema,
+      record_last_request: z.boolean(),
       name: z.string().min(1, t('Please enter a name')),
       remain_quota_dollars: z.number().optional(),
       expired_time: z.date().optional(),
@@ -95,7 +96,10 @@ export const API_KEY_FORM_DEFAULT_VALUES: ApiKeyFormValues = {
     min_delay_ms: 0,
     max_delay_ms: 0,
     content: '',
+    cache_read_tokens: 0,
+    cache_write_tokens: 0,
   },
+  record_last_request: false,
   name: '',
   remain_quota_dollars: 10,
   expired_time: undefined,
@@ -129,6 +133,7 @@ export function transformFormDataToPayload(
 ): ApiKeyFormData {
   return {
     fixed_response: data.fixed_response,
+    record_last_request: data.record_last_request,
     name: data.name,
     remain_quota: data.unlimited_quota
       ? 0
@@ -152,9 +157,11 @@ export function transformApiKeyToFormDefaults(
   apiKey: ApiKey
 ): ApiKeyFormValues {
   return {
-    fixed_response: apiKey.fixed_response ?? {
+    fixed_response: {
       ...API_KEY_FORM_DEFAULT_VALUES.fixed_response,
+      ...apiKey.fixed_response,
     },
+    record_last_request: apiKey.record_last_request ?? false,
     name: apiKey.name,
     remain_quota_dollars: apiKey.unlimited_quota
       ? 0
