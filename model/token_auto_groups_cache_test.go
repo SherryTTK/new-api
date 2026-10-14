@@ -1,9 +1,12 @@
 package model
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,4 +68,67 @@ func TestTokenUpdateSynchronouslyNarrowsPreheatedAutoGroupsCache(t *testing.T) {
 func cacheSetTokenForTest(token Token) error {
 	_, err := cacheInitToken(token)
 	return err
+}
+
+func TestTokenPrivateFeaturesSurviveCacheInitialization(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		config *types.FixedResponseConfig
+		record *bool
+	}{
+		{"enabled", &types.FixedResponseConfig{Enabled: true, Content: "固定\nreply", MinDelayMS: 1, MaxDelayMS: 2, CacheReadTokens: 3, CacheWriteTokens: 4}, common.GetPointer(true)},
+		{"disabled", &types.FixedResponseConfig{Content: "saved reply"}, common.GetPointer(false)},
+		{"unset", nil, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			useUserCacheMiniRedis(t)
+			token := Token{Id: 42, UserId: 7, Key: "private-features", FixedResponse: tc.config, RecordLastRequest: tc.record}
+			result, err := cacheInitToken(token)
+			require.NoError(t, err)
+			require.Equal(t, 1, result)
+			cached, err := cacheGetTokenByKey(token.Key)
+			require.NoError(t, err)
+			assert.Equal(t, token.FixedResponse, cached.FixedResponse)
+			assert.Equal(t, token.RecordLastRequest, cached.RecordLastRequest)
+		})
+	}
+}
+
+func TestTokenLegacyCacheBackfillsPrivateFeaturesWithoutResettingQuota(t *testing.T) {
+	server := useUserCacheMiniRedis(t)
+	ctx := context.Background()
+	token := Token{Id: 42, UserId: 7, Key: "legacy-private-features", RemainQuota: 1000, UsedQuota: 10,
+		FixedResponse: &types.FixedResponseConfig{Enabled: true, Content: "local reply"}, RecordLastRequest: common.GetPointer(true)}
+	_, err := cacheInitToken(token)
+	require.NoError(t, err)
+	key := getTokenCacheKey(token.Key)
+	require.NoError(t, common.RDB.HDel(ctx, key, "FixedResponse", "RecordLastRequest").Err())
+	require.NoError(t, common.RDB.HSet(ctx, key, "RemainQuota", 700, "UsedQuota", 310).Err())
+	_, err = cacheGetTokenByKey(token.Key)
+	require.Error(t, err, "old hashes must fall back to the database")
+	require.NoError(t, common.RDB.Set(ctx, getTokenCacheFenceKey(token.Key), 1, time.Second).Err())
+	result, err := cacheInitToken(token)
+	require.NoError(t, err)
+	assert.Zero(t, result)
+	_, err = cacheGetTokenByKey(token.Key)
+	require.Error(t, err, "a mutation fence must prevent publishing a stale snapshot")
+	server.FastForward(time.Second)
+	result, err = cacheInitToken(token)
+	require.NoError(t, err)
+	assert.Equal(t, 2, result)
+	cached, err := cacheGetTokenByKey(token.Key)
+	require.NoError(t, err)
+	assert.Equal(t, token.FixedResponse, cached.FixedResponse)
+	assert.Equal(t, token.RecordLastRequest, cached.RecordLastRequest)
+	assert.Equal(t, 700, cached.RemainQuota)
+	assert.Equal(t, 310, cached.UsedQuota)
+	token.FixedResponse = &types.FixedResponseConfig{Enabled: true, Content: "stale reply"}
+	token.RecordLastRequest = common.GetPointer(false)
+	_, err = cacheInitToken(token)
+	require.NoError(t, err)
+	cached, err = cacheGetTokenByKey(token.Key)
+	require.NoError(t, err)
+	assert.Equal(t, "local reply", cached.FixedResponse.Content)
+	require.NotNil(t, cached.RecordLastRequest)
+	assert.True(t, *cached.RecordLastRequest)
 }

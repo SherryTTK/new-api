@@ -48,11 +48,12 @@ func invalidateTokenCacheForMutation(key string) error {
 }
 
 // cacheInitToken publishes a database snapshot only when no mutation fence is
-// active and the hash is cold. An existing hash only gets its TTL refreshed:
-// its RemainQuota may already be ahead of this snapshot because atomic
+// active and the hash is cold. Existing hashes only backfill missing fork
+// metadata and refresh their TTL. Their RemainQuota may already be ahead
+// of this snapshot because atomic
 // pre-consume decrements Redis first, so a snapshot must never overwrite any
-// field of a live hash.
-// 返回值：0=被 fence 拦截，1=完成初始化，2=哈希已存在，仅刷新 TTL。
+// existing field of a live hash.
+// 返回值：0=被 fence 拦截，1=完成初始化，2=补齐缺失元数据并刷新已有哈希 TTL。
 func cacheInitToken(token Token) (int, error) {
 	if !common.RedisEnabled {
 		return 0, nil
@@ -61,11 +62,21 @@ func cacheInitToken(token Token) (int, error) {
 	if token.AllowIps != nil {
 		allowIps = *token.AllowIps
 	}
+	fixedResponse, err := common.Marshal(token.FixedResponse)
+	if err != nil {
+		return 0, fmt.Errorf("failed to encode fixed response: %w", err)
+	}
+	recordLastRequest := ""
+	if token.RecordLastRequest != nil {
+		recordLastRequest = strconv.FormatBool(*token.RecordLastRequest)
+	}
 	const script = `
 if redis.call('EXISTS', KEYS[2]) == 1 then
   return 0
 end
 if redis.call('EXISTS', KEYS[1]) == 1 then
+  redis.call('HSETNX', KEYS[1], 'FixedResponse', ARGV[18])
+  redis.call('HSETNX', KEYS[1], 'RecordLastRequest', ARGV[19])
   redis.call('EXPIRE', KEYS[1], ARGV[17])
   return 2
 end
@@ -74,7 +85,8 @@ redis.call('HSET', KEYS[1],
   'CreatedTime', ARGV[5], 'AccessedTime', ARGV[6], 'ExpiredTime', ARGV[7],
   'UnlimitedQuota', ARGV[8], 'ModelLimitsEnabled', ARGV[9], 'ModelLimits', ARGV[10],
   'AllowIps', ARGV[11], 'Group', ARGV[12], 'CrossGroupRetry', ARGV[13],
-  'AutoGroups', ARGV[14], 'RemainQuota', ARGV[15], 'UsedQuota', ARGV[16])
+  'AutoGroups', ARGV[14], 'RemainQuota', ARGV[15], 'UsedQuota', ARGV[16],
+  'FixedResponse', ARGV[18], 'RecordLastRequest', ARGV[19])
 redis.call('EXPIRE', KEYS[1], ARGV[17])
 return 1`
 
@@ -86,7 +98,7 @@ return 1`
 		strconv.FormatBool(token.UnlimitedQuota), strconv.FormatBool(token.ModelLimitsEnabled),
 		token.ModelLimits, allowIps, token.Group, strconv.FormatBool(token.CrossGroupRetry),
 		token.AutoGroups, token.RemainQuota, token.UsedQuota,
-		tokenCacheTTLSeconds(),
+		tokenCacheTTLSeconds(), string(fixedResponse), recordLastRequest,
 	).Int()
 }
 
@@ -96,7 +108,7 @@ func cacheGetTokenByKey(key string) (*Token, error) {
 		return nil, fmt.Errorf("redis is not enabled")
 	}
 	var token Token
-	if err := common.RedisHGetObj(getTokenCacheKey(key), &token); err != nil {
+	if err := common.RedisHGetObj(getTokenCacheKey(key), &token, "FixedResponse", "RecordLastRequest"); err != nil {
 		return nil, err
 	}
 	if token.Id <= 0 {
