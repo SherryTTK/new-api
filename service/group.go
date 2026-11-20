@@ -5,6 +5,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
@@ -95,16 +96,35 @@ func FilterUserTokenAutoGroups(userGroup string, groups []string) []string {
 // GetRequestAutoGroups resolves the ordered Auto groups for the current token.
 // The absence of the context value means that the token inherits the complete
 // global Auto list; a present (even empty) value is an explicit token snapshot.
-func GetRequestAutoGroups(c *gin.Context, userGroup string) []string {
+// Claude gate exclusions apply only to Claude model requests. An empty model
+// (used for discovery) keeps every otherwise permitted group.
+func GetRequestAutoGroups(c *gin.Context, userGroup, modelName string) []string {
 	value, ok := common.GetContextKey(c, constant.ContextKeyTokenAutoGroups)
+	var groups []string
 	if !ok {
-		return GetUserAutoGroup(userGroup)
+		groups = GetUserAutoGroup(userGroup)
+	} else {
+		configured, valid := value.([]string)
+		if !valid {
+			return []string{}
+		}
+		groups = FilterUserTokenAutoGroups(userGroup, configured)
 	}
-	groups, ok := value.([]string)
-	if !ok {
-		return []string{}
+	policy := model.CurrentRequestPolicy().ClaudeCodeGate
+	if policy.Mode == "off" || len(policy.Groups) == 0 {
+		return groups
 	}
-	return FilterUserTokenAutoGroups(userGroup, groups)
+	filtered := make([]string, 0, len(groups))
+	for _, group := range groups {
+		if policy.AppliesToModel(group, modelName) {
+			logger.LogWarn(c.Request.Context(), common.LogText("Claude Code gate mode=%q group=%q reason=%q request_id=%q", policy.Mode, group, "auto_group_excluded", c.GetString(common.RequestIdKey)))
+			if policy.Mode == "enforce" {
+				continue
+			}
+		}
+		filtered = append(filtered, group)
+	}
+	return filtered
 }
 
 // GetGroupsEnabledModels 按 groups 顺序获取各分组启用的模型并去重

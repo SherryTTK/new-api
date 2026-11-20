@@ -22,6 +22,7 @@ import (
 // settings API. It is rebuilt from the option map on every option write, so
 // the runtime globals updated by the same write never disagree with it.
 type RequestPolicySnapshot struct {
+	ClaudeCodeGate  operation_setting.ClaudeCodeGateSetting
 	Affinity        operation_setting.ChannelAffinitySetting
 	RetryTimes      int
 	RetryCodes      []operation_setting.StatusCodeRange
@@ -61,10 +62,16 @@ func requestPolicyDefaultOptions() map[string]string {
 	defaults["SensitiveWords"] = setting.SensitiveWordsToString()
 	defaults["AutomaticEnableChannelEnabled"] = strconv.FormatBool(common.AutomaticEnableChannelEnabled)
 	defaults["ChannelDisableThreshold"] = strconv.FormatFloat(common.ChannelDisableThreshold, 'f', -1, 64)
+	defaults["claude_code_gate.mode"] = "off"
+	defaults["claude_code_gate.groups"] = "[]"
+	defaults["claude_code_gate.body_mode"] = "off"
 	return defaults
 }
 
 func IsRequestPolicyOption(key string) bool {
+	if strings.HasPrefix(key, "claude_code_gate.") {
+		return true
+	}
 	if strings.HasPrefix(key, "channel_affinity_setting.") {
 		return true
 	}
@@ -98,6 +105,22 @@ func BuildRequestPolicy(options map[string]string) (*RequestPolicySnapshot, erro
 	}
 	maps.Copy(raw, options)
 	snapshot := &RequestPolicySnapshot{Options: raw}
+	for key := range raw {
+		if strings.HasPrefix(key, "claude_code_gate.") && key != "claude_code_gate.mode" && key != "claude_code_gate.groups" && key != "claude_code_gate.body_mode" {
+			return nil, common.NewMessage("Unknown Claude Code gate option")
+		}
+	}
+	snapshot.ClaudeCodeGate.Mode = raw["claude_code_gate.mode"]
+	snapshot.ClaudeCodeGate.BodyMode = raw["claude_code_gate.body_mode"]
+	if err := common.UnmarshalJsonStr(raw["claude_code_gate.groups"], &snapshot.ClaudeCodeGate.Groups); err != nil {
+		return nil, common.NewMessage("Claude Code gate groups must be a JSON array of strings")
+	}
+	if snapshot.ClaudeCodeGate.Groups == nil {
+		return nil, common.NewMessage("Claude Code gate groups must be a JSON array of strings")
+	}
+	if err := snapshot.ClaudeCodeGate.Validate(); err != nil {
+		return nil, err
+	}
 	affinityFields := map[string]string{}
 	for key, value := range raw {
 		if field, ok := strings.CutPrefix(key, "channel_affinity_setting."); ok {

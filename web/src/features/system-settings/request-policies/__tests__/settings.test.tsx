@@ -58,7 +58,7 @@ function optionsResponse() {
     success: true,
     data: Object.entries(settings).map(([key, value]) => ({
       key,
-      value: String(value),
+      value: Array.isArray(value) ? JSON.stringify(value) : String(value),
     })),
   }
 }
@@ -148,6 +148,11 @@ beforeEach(() => {
     },
   })
   vi.spyOn(api, 'get').mockImplementation(async (url) => {
+    if (url === '/api/group/') {
+      return {
+        data: { success: true, data: ['default', 'cc-only', 'cc-pro', 'auto'] },
+      }
+    }
     if (url === '/api/option/') return { data: optionsResponse() }
     if (url === '/api/option/request_policy') {
       return {
@@ -187,6 +192,110 @@ afterEach(() => {
 })
 
 describe('request policy settings', () => {
+  it('the Claude Code gate starts disabled and saves selected groups and both modes together', async () => {
+    await renderPolicies('/system-settings/request-policies/claude-code')
+    const gateMode = await screen.findByRole('combobox', { name: 'Gate mode' })
+    const bodyMode = screen.getByRole('combobox', {
+      name: 'Body fingerprint checks',
+    })
+    expect(gateMode).toHaveValue('off')
+    expect(bodyMode).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled()
+
+    await userEvent.selectOptions(gateMode, 'enforce')
+    expect(bodyMode).toBeEnabled()
+    await userEvent.selectOptions(bodyMode, 'shadow')
+    const groupInput = await screen.findByRole('combobox', {
+      name: 'Restricted groups',
+    })
+    await waitFor(() => expect(groupInput).toBeEnabled())
+    await userEvent.click(groupInput)
+    expect(
+      screen.queryByRole('option', { name: 'auto' })
+    ).not.toBeInTheDocument()
+    await userEvent.click(
+      await screen.findByRole('option', { name: 'cc-only' })
+    )
+    await userEvent.click(groupInput)
+    await userEvent.click(await screen.findByRole('option', { name: 'cc-pro' }))
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenCalledWith('/api/option/request_policy', {
+        options: {
+          'claude_code_gate.mode': 'enforce',
+          'claude_code_gate.groups': '["cc-only","cc-pro"]',
+          'claude_code_gate.body_mode': 'shadow',
+        },
+      })
+    )
+  })
+
+  it('observing the gate preserves the saved body mode and explains that requests remain unblocked', async () => {
+    settings['claude_code_gate.mode'] = 'enforce'
+    settings['claude_code_gate.body_mode'] = 'enforce'
+    settings['claude_code_gate.groups'] = ['cc-only']
+    await renderPolicies('/system-settings/request-policies/claude-code')
+    const gateMode = await screen.findByRole('combobox', { name: 'Gate mode' })
+    await userEvent.selectOptions(gateMode, 'shadow')
+    expect(
+      screen.getByRole('combobox', { name: 'Body fingerprint checks' })
+    ).toHaveValue('enforce')
+    expect(
+      screen.getByText(
+        'Observe only records mismatches without blocking requests or changing group selection.'
+      )
+    ).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenCalledWith('/api/option/request_policy', {
+        options: {
+          'claude_code_gate.mode': 'shadow',
+          'claude_code_gate.groups': '["cc-only"]',
+          'claude_code_gate.body_mode': 'enforce',
+        },
+      })
+    )
+  })
+
+  it('a rejected gate save retains the edits for retry', async () => {
+    vi.mocked(api.patch).mockResolvedValueOnce({
+      data: { success: false, message: 'Save rejected' },
+    })
+    await renderPolicies('/system-settings/request-policies/claude-code')
+    await userEvent.selectOptions(
+      await screen.findByRole('combobox', { name: 'Gate mode' }),
+      'enforce'
+    )
+    const save = screen.getByRole('button', { name: 'Save Changes' })
+    await userEvent.click(save)
+    await waitFor(() => expect(save).toBeEnabled())
+    expect(screen.getByRole('combobox', { name: 'Gate mode' })).toHaveValue(
+      'enforce'
+    )
+    await userEvent.click(save)
+    await waitFor(() => expect(api.patch).toHaveBeenCalledTimes(2))
+  })
+
+  it('a failed group lookup shows a retry action and preserves saved selections', async () => {
+    settings['claude_code_gate.groups'] = ['cc-only']
+    vi.mocked(api.get).mockImplementation(async (url) => {
+      if (url === '/api/option/') return { data: optionsResponse() }
+      if (url === '/api/group/') {
+        return { data: { success: false, message: 'Groups unavailable' } }
+      }
+      throw new Error(`Unexpected URL: ${url}`)
+    })
+    await renderPolicies('/system-settings/request-policies/claude-code')
+    expect(await screen.findByText('Failed to load groups')).toBeVisible()
+    expect(
+      screen.getByRole('combobox', { name: 'Restricted groups' })
+    ).toBeDisabled()
+    expect(screen.getByText('cc-only')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled()
+    expect(api.patch).not.toHaveBeenCalled()
+  })
+
   it.each([
     ['retry', 'Save Changes'],
     ['health', 'Save Changes'],

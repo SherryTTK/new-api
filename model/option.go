@@ -189,6 +189,9 @@ func InitOptionMap() {
 	// 自动添加所有注册的模型配置
 	modelConfigs := config.GlobalConfig.ExportAllConfigs()
 	maps.Copy(common.OptionMap, modelConfigs)
+	common.OptionMap["claude_code_gate.mode"] = "off"
+	common.OptionMap["claude_code_gate.groups"] = "[]"
+	common.OptionMap["claude_code_gate.body_mode"] = "off"
 
 	common.OptionMapRWMutex.Unlock()
 	loadOptionsFromDatabase()

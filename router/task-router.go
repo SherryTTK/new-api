@@ -13,13 +13,13 @@ import (
 // on submit routes and the task id on read routes.
 func SetTaskRouter(router *gin.Engine) {
 	taskSubmitRouter := router.Group("/v1/tasks")
-	taskSubmitRouter.Use(middleware.RouteTag("relay"), middleware.TokenAuth())
+	taskSubmitRouter.Use(middleware.RouteTag("relay"), middleware.TokenAuth(), middleware.ClaudeCodeOnly())
 	{
 		taskSubmitRouter.POST("/:key", middleware.PrepareTaskPluginSubmit(), middleware.Distribute(), controller.RelayTask)
 	}
 
 	taskReadRouter := router.Group("/v1/tasks")
-	taskReadRouter.Use(middleware.RouteTag("relay"), middleware.TokenAuth())
+	taskReadRouter.Use(middleware.RouteTag("relay"), middleware.TokenAuth(), middleware.ClaudeCodeOnly())
 	{
 		taskReadRouter.GET("/:key", controller.GetTask)
 		taskReadRouter.GET("/:key/artifacts", controller.GetTaskArtifacts)
@@ -29,6 +29,7 @@ func SetTaskRouter(router *gin.Engine) {
 	taskContentRouter.Use(
 		middleware.RouteTag("relay"),
 		middleware.TokenOrTaskArtifactAccessAuth("key", "artifact_key"),
+		middleware.ClaudeCodeOnly(),
 	)
 	{
 		taskContentRouter.GET("/:key/artifacts/:artifact_key/content", controller.TaskArtifactContent)

@@ -92,7 +92,24 @@ func TestRequestPolicyDatabaseMatrix(t *testing.T) {
 			loadOptionsFromDatabase()
 			assert.Equal(t, "strict", CurrentRequestPolicy().Affinity.SessionMode)
 			assert.Equal(t, rules, CurrentRequestPolicy().Options["channel_affinity_setting.rules"], "a global mode never rewrites rule fields")
+			require.Equal(t, "off", CurrentRequestPolicy().ClaudeCodeGate.Mode)
+			require.NoError(t, UpdateRequestPolicyOptions(map[string]string{
+				"claude_code_gate.mode": "enforce", "claude_code_gate.body_mode": "shadow",
+				"claude_code_gate.groups": `["cc-only","cc-pro"]`,
+			}))
+			loadOptionsFromDatabase()
+			loadOptionsFromDatabase()
+			assert.Equal(t, "enforce", CurrentRequestPolicy().ClaudeCodeGate.Mode)
+			assert.Equal(t, "shadow", CurrentRequestPolicy().ClaudeCodeGate.BodyMode)
+			assert.Equal(t, []string{"cc-only", "cc-pro"}, CurrentRequestPolicy().ClaudeCodeGate.Groups)
+			require.NoError(t, UpdateOption("claude_code_gate.mode", "shadow"))
+			assert.Equal(t, "shadow", CurrentRequestPolicy().ClaudeCodeGate.Mode, "the general options API applies the same validated policy")
 			snapshot := CurrentRequestPolicy()
+			assert.Error(t, UpdateRequestPolicyOptions(map[string]string{"claude_code_gate.mode": "invalid", "claude_code_gate.groups": `[]`}))
+			assert.Same(t, snapshot, CurrentRequestPolicy())
+			var gateOption Option
+			require.NoError(t, db.Where(map[string]any{"key": "claude_code_gate.groups"}).First(&gateOption).Error)
+			assert.Equal(t, `["cc-only","cc-pro"]`, gateOption.Value, "invalid writes leave persisted policy intact")
 			assert.Error(t, UpdateRequestPolicyOptions(map[string]string{"channel_affinity_setting.session_mode": "unknown"}))
 			assert.Same(t, snapshot, CurrentRequestPolicy())
 			for _, value := range []string{"-1", "1.5", "bad", strconv.Itoa(math.MaxInt)} {
@@ -117,6 +134,20 @@ func TestRequestPolicyDatabaseMatrix(t *testing.T) {
 			assert.Equal(t, "2", option.Value)
 			loadOptionsFromDatabase()
 			assert.Equal(t, "strict", CurrentRequestPolicy().Affinity.SessionMode, "a failed save keeps the persisted global mode")
+		})
+	}
+}
+
+func TestClaudeCodeGateConfigValidation(t *testing.T) {
+	for _, test := range []struct{ key, value string }{
+		{"mode", "invalid"}, {"body_mode", "invalid"}, {"unknown", "off"},
+		{"groups", `null`}, {"groups", `{}`}, {"groups", `[1]`},
+		{"groups", `[""]`}, {"groups", `[" cc-only"]`},
+		{"groups", `["auto"]`}, {"groups", `["cc-only","cc-only"]`},
+	} {
+		t.Run(test.key+"="+test.value, func(t *testing.T) {
+			_, err := BuildRequestPolicy(map[string]string{"claude_code_gate." + test.key: test.value})
+			assert.Error(t, err)
 		})
 	}
 }

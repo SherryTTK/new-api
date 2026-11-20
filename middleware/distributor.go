@@ -51,6 +51,13 @@ func Distribute() func(c *gin.Context) {
 			abortWithOpenAiMessage(c, http.StatusBadRequest, i18n.T(c, i18n.MsgDistributorInvalidRequest, map[string]any{"Error": err.Error()}))
 			return
 		}
+		gateGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
+		if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") && modelRequest.Group != "" {
+			gateGroup = modelRequest.Group
+		}
+		if checkClaudeCodeRequest(c, gateGroup, modelRequest.Model) {
+			return
+		}
 		_, pinned, _ := constraints.ResolvedPin()
 		config, enabled := common.GetContextKeyType[hosttypes.FixedResponseConfig](c, hosttypes.FixedResponseContextKey)
 		fixedResponse := enabled && config.Enabled && hosttypes.IsFixedResponsePath(c.Request.URL.Path)
@@ -81,7 +88,7 @@ func Distribute() func(c *gin.Context) {
 			}
 			usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
 			if usingGroup == "auto" {
-				groups := service.GetRequestAutoGroups(c, common.GetContextKeyString(c, constant.ContextKeyUserGroup))
+				groups := service.GetRequestAutoGroups(c, common.GetContextKeyString(c, constant.ContextKeyUserGroup), modelRequest.Model)
 				if len(groups) == 0 {
 					abortWithOpenAiMessage(c, http.StatusForbidden, "No available group for fixed response")
 					return

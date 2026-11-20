@@ -116,7 +116,7 @@ func productionPluginRouteHandlers(generation *jsplugin.RoutingGeneration, bindi
 	}
 	return []gin.HandlerFunc{
 		pinRoute,
-		middleware.TokenAuth(),
+		middleware.TokenAuth(), middleware.ClaudeCodeOnly(),
 		middleware.SystemPerformanceCheck(),
 		middleware.ModelRequestRateLimit(),
 		middleware.PrepareTaskPluginRoute(),

@@ -215,8 +215,15 @@ func (s *responsesWSSession) runRequest(state *responsesWSCallState, message []b
 		s.clientWriteMu.Unlock()
 	}()
 	request := s.request.Clone(s.ctx)
-	request.Body = io.NopCloser(bytes.NewReader(message))
-	request.ContentLength = int64(len(message))
+	// Run request middleware against the same model/body that will be relayed,
+	// including the legacy response wrapper. Malformed events still reach the
+	// normal parse-error path after authentication and rate limiting.
+	requestBody := message
+	if parseErr == nil {
+		requestBody = create.Body
+	}
+	request.Body = io.NopCloser(bytes.NewReader(requestBody))
+	request.ContentLength = int64(len(requestBody))
 	request.Header.Set("Content-Type", "application/json")
 	apiErr = s.runner(request, requestID, func(c *gin.Context) *types.NewAPIError {
 		if parseErr != nil {
@@ -582,7 +589,7 @@ func (s *responsesWSSession) restoreConnectionContext(c *gin.Context, model stri
 	} else {
 		group := common.GetContextKeyString(c, appconstant.ContextKeyUsingGroup)
 		if group == "auto" {
-			if !slices.Contains(service.GetRequestAutoGroups(c, common.GetContextKeyString(c, appconstant.ContextKeyUserGroup)), s.lockedGroup) {
+			if !slices.Contains(service.GetRequestAutoGroups(c, common.GetContextKeyString(c, appconstant.ContextKeyUserGroup), model), s.lockedGroup) {
 				return types.NewErrorWithStatusCode(errors.New("the connection group is no longer allowed"), types.ErrorCodeAccessDenied, http.StatusForbidden, types.ErrOptionWithSkipRetry())
 			}
 			group = s.lockedGroup

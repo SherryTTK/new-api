@@ -41,12 +41,21 @@ export type FilteringSettings = Pick<
   SecuritySettings,
   'CheckSensitiveEnabled' | 'CheckSensitiveOnPromptEnabled' | 'SensitiveWords'
 >
+export type ClaudeCodeGateSettings = {
+  'claude_code_gate.mode': 'off' | 'shadow' | 'enforce'
+  'claude_code_gate.groups': string[]
+  'claude_code_gate.body_mode': 'off' | 'shadow' | 'enforce'
+}
 export type RequestPolicySettings = RetrySettings &
+  ClaudeCodeGateSettings &
   HealthSettings &
   FilteringSettings &
   Pick<ChannelAffinitySettings, keyof ChannelAffinitySettings>
 
 export const defaultRequestPolicySettings: RequestPolicySettings = {
+  'claude_code_gate.mode': 'off',
+  'claude_code_gate.groups': [],
+  'claude_code_gate.body_mode': 'off',
   RetryTimes: 0,
   AutomaticRetryStatusCodes:
     '100-199,300-399,401-407,409-499,500-503,505-523,525-599',

@@ -18,11 +18,19 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createSectionRegistry } from '../utils/section-registry'
 import { ChannelHealthSection } from './channel-health-section'
+import { ClaudeCodeGateSection } from './claude-code-gate-section'
 import type { RequestPolicySettings } from './defaults'
 import { RequestChecksSection } from './request-checks-section'
 import { RoutingPolicySection } from './routing-section'
 
 const POLICY_SECTIONS = [
+  {
+    id: 'claude-code',
+    titleKey: 'Claude Code access gate',
+    build: (settings: RequestPolicySettings) => (
+      <ClaudeCodeGateSection defaultValues={settings} />
+    ),
+  },
   {
     id: 'filtering',
     titleKey: 'Request checks',
